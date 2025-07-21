@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -31,6 +31,49 @@ const validateFirebaseConfig = () => {
   
   console.log('✅ Firebase konfigürasyonu doğru');
   return true;
+};
+
+// Firebase bağlantı test fonksiyonu
+export const testFirebaseConnection = async () => {
+  try {
+    console.log('🔍 Firebase bağlantısı test ediliyor...');
+    
+    // Firestore bağlantısını test et
+    const testCollection = collection(db, "test");
+    const testSnapshot = await getDocs(testCollection);
+    
+    console.log('✅ Firestore bağlantısı başarılı');
+    console.log('📊 Test koleksiyonu doküman sayısı:', testSnapshot.docs.length);
+    
+    // Users koleksiyonunu test et
+    const usersCollection = collection(db, "users");
+    const usersSnapshot = await getDocs(usersCollection);
+    
+    console.log('✅ Users koleksiyonu erişilebilir');
+    console.log('👥 Toplam kullanıcı sayısı:', usersSnapshot.docs.length);
+    
+    // Appointments koleksiyonunu test et
+    const appointmentsCollection = collection(db, "appointments");
+    const appointmentsSnapshot = await getDocs(appointmentsCollection);
+    
+    console.log('✅ Appointments koleksiyonu erişilebilir');
+    console.log('📅 Toplam randevu sayısı:', appointmentsSnapshot.docs.length);
+    
+    return {
+      success: true,
+      users: usersSnapshot.docs.length,
+      appointments: appointmentsSnapshot.docs.length,
+      message: 'Firebase bağlantısı başarılı'
+    };
+    
+  } catch (error) {
+    console.error('❌ Firebase bağlantı testi başarısız:', error);
+    return {
+      success: false,
+      error: error,
+      message: 'Firebase bağlantısı başarısız'
+    };
+  }
 };
 
 // Initialize Firebase

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPatientInfo, savePatientInfo, type PatientInfo as PatientInfoType } from "@/services/patientService";
+import PatientNavbar from "@/components/PatientNavbar";
 
 // Local interface for form data
 interface PatientFormData {
@@ -328,8 +329,11 @@ const PatientProfile = () => {
   // Ana içerik
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      {/* Navbar */}
+      <PatientNavbar currentPage="profile" />
+      
+      {/* Page Header */}
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -359,7 +363,7 @@ const PatientProfile = () => {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -171,9 +171,9 @@ const LoginDebug = () => {
             </div>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Test hesabı: test@example.com / 123456
-              </p>
+                     <p className="text-sm text-gray-600">
+         Test hesabı: test@example.com / 123456 | Admin: admin@klinik.com / 123456
+       </p>
               <div className="mt-2 space-x-4">
                 <Button
                   variant="outline"
@@ -185,6 +185,16 @@ const LoginDebug = () => {
                 >
                   Test Hesabını Doldur
                 </Button>
+                         <Button
+           variant="outline"
+           size="sm"
+           onClick={() => {
+             setEmail("admin@klinik.com");
+             setPassword("123456");
+           }}
+         >
+           Admin Hesabını Doldur
+         </Button>
                 <Button
                   variant="outline"
                   size="sm"

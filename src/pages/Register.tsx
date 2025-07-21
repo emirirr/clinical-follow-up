@@ -253,9 +253,9 @@ const Register = () => {
                   Giriş yapın
                 </Button>
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Test için: test@example.com / 123456
-              </p>
+                               <p className="text-xs text-muted-foreground mt-2">
+           Test için: test@example.com / 123456 | Admin: admin@klinik.com / 123456
+         </p>
             </div>
           </CardContent>
         </Card>

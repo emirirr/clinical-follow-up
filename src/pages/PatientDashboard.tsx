@@ -40,6 +40,7 @@ import {
   type TestResult
 } from "@/services/patientService";
 import NewAppointmentModal from "@/components/NewAppointmentModal";
+import PatientNavbar from "@/components/PatientNavbar";
 
 // Interface'ler artık servis dosyasından import ediliyor
 
@@ -56,6 +57,16 @@ const PatientDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
+
+  // URL'den aktif sayfayı belirle
+  const getCurrentPage = () => {
+    const path = window.location.pathname;
+    if (path.includes("/patient/appointments")) return "appointments";
+    if (path.includes("/patient/prescriptions")) return "prescriptions";
+    if (path.includes("/patient/test-results")) return "test-results";
+    if (path.includes("/patient/notifications")) return "notifications";
+    return "dashboard";
+  };
 
   // Verileri yükle
   useEffect(() => {
@@ -193,33 +204,10 @@ const PatientDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Hasta Paneli
-              </h1>
-              <Badge variant="secondary">Hasta</Badge>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <User className="h-5 w-5 text-gray-500" />
-                <span className="text-sm text-gray-700">{patientInfo?.name || user?.email}</span>
-              </div>
-              <Button variant="outline" onClick={() => navigate("/patient/profile")}>
-                <Settings className="h-4 w-4 mr-2" />
-                Profil
-              </Button>
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Çıkış Yap
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navbar */}
+      <PatientNavbar currentPage={getCurrentPage()} />
+      
+
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

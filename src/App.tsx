@@ -12,7 +12,16 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientProfile from "./pages/PatientProfile";
+import PatientAppointments from "./pages/PatientAppointments";
+import PatientPrescriptions from "./pages/PatientPrescriptions";
+import PatientTestResults from "./pages/PatientTestResults";
+import PatientNotifications from "./pages/PatientNotifications";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminPatients from "./pages/AdminPatients";
+import AdminDoctors from "./pages/AdminDoctors";
+import AdminAppointments from "./pages/AdminAppointments";
+import AdminReports from "./pages/AdminReports";
+import AdminSettings from "./pages/AdminSettings";
 import FirebaseTest from "./pages/FirebaseTest";
 import SimpleTest from "./pages/SimpleTest";
 import LoginDebug from "./pages/LoginDebug";
@@ -75,10 +84,82 @@ const App = () => (
                 } 
               />
               <Route 
+                path="/patient/appointments" 
+                element={
+                  <ProtectedRoute>
+                    <PatientAppointments />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/patient/prescriptions" 
+                element={
+                  <ProtectedRoute>
+                    <PatientPrescriptions />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/patient/test-results" 
+                element={
+                  <ProtectedRoute>
+                    <PatientTestResults />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/patient/notifications" 
+                element={
+                  <ProtectedRoute>
+                    <PatientNotifications />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/admin" 
                 element={
                   <ProtectedRoute>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/patients" 
+                element={
+                  <ProtectedRoute>
+                    <AdminPatients />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/doctors" 
+                element={
+                  <ProtectedRoute>
+                    <AdminDoctors />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/appointments" 
+                element={
+                  <ProtectedRoute>
+                    <AdminAppointments />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/reports" 
+                element={
+                  <ProtectedRoute>
+                    <AdminReports />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/settings" 
+                element={
+                  <ProtectedRoute>
+                    <AdminSettings />
                   </ProtectedRoute>
                 } 
               />
