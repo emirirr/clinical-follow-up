@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Test koleksiyonu için tam erişim (geliştirme için)
+    match /test/{document} {
+      allow read, write: if true;
+    }
+    
+    // Users koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /users/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Patients koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /patients/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Appointments koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /appointments/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Prescriptions koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /prescriptions/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // TestResults koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /testResults/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Doctors koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /doctors/{document} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Notifications koleksiyonu - giriş yapmış kullanıcılar okuyabilir/yazabilir
+    match /notifications/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+} 

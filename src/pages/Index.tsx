@@ -1,15 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import { RoleCard } from "@/components/RoleCard";
 import { PatientCard } from "@/components/PatientCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserCheck, Stethoscope, Shield, Calendar, Users, Activity, Bell, FileText } from "lucide-react";
+import { UserCheck, Stethoscope, Shield, Calendar, Users, Activity, Bell, FileText, LogIn, UserPlus } from "lucide-react";
 import medicalHero from "@/assets/medical-hero.jpg";
+import { getRedirectUrlByRole } from "@/services/userService";
 
 type UserRole = "admin" | "doctor" | "patient" | null;
 
 const Index = () => {
+  const { user, userProfile, loading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const navigate = useNavigate();
+
+  // Giriş yapmış kullanıcıyı doğru panele yönlendir
+  useEffect(() => {
+    if (!loading && user && userProfile) {
+      const redirectUrl = getRedirectUrlByRole(userProfile.role);
+      navigate(redirectUrl);
+    }
+  }, [user, userProfile, loading, navigate]);
+
+  // Giriş yapmamış kullanıcılar için ana sayfa içeriği
+  if (user && !userProfile && !loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Profil Tamamlanıyor...</h2>
+          <p className="text-muted-foreground mb-4">
+            Kullanıcı profiliniz yükleniyor, lütfen bekleyin.
+          </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedRole === null) {
     return (
@@ -63,10 +91,99 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Authentication Buttons */}
+            <div className="text-center mb-8">
+              <div className="flex justify-center space-x-4 mb-6">
+                <Button 
+                  onClick={() => navigate("/login")}
+                  className="px-8 py-3"
+                  size="lg"
+                >
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Giriş Yap
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate("/register")}
+                  className="px-8 py-3"
+                  size="lg"
+                >
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Kayıt Ol
+                </Button>
+                <Button 
+                  variant="secondary"
+                  onClick={() => navigate("/firebase-test")}
+                  className="px-6 py-3"
+                  size="lg"
+                >
+                  🔧 Firebase Test
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate("/simple-test")}
+                  className="px-8 py-3"
+                  size="lg"
+                >
+                  🧪 Basit Test
+                </Button>
+                <Button 
+                  variant="secondary"
+                  onClick={() => window.open("https://console.firebase.google.com/project/kliniktakip-95901/firestore/rules", "_blank")}
+                  className="px-8 py-3"
+                  size="lg"
+                >
+                  🔧 Firebase Kuralları
+                </Button>
+              </div>
+              <p className="text-muted-foreground">Hesabınızla giriş yapın veya yeni hesap oluşturun</p>
+              
+              {/* Test Links */}
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-semibold text-blue-800 mb-2">🔧 Test Linkleri</h3>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <a 
+                    href="/login" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Login Sayfası
+                  </a>
+                  <span className="text-blue-400">|</span>
+                  <a 
+                    href="/register" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Kayıt Sayfası
+                  </a>
+                  <span className="text-blue-400">|</span>
+                  <a 
+                    href="/firebase-test" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Firebase Test
+                  </a>
+                  <span className="text-blue-400">|</span>
+                  <a 
+                    href="/login-debug" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Login Debug
+                  </a>
+                  <span className="text-blue-400">|</span>
+                  <a 
+                    href="/profile-debug" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Profil Debug
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* Role Selection */}
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-semibold mb-4">Giriş Yapın</h2>
-              <p className="text-muted-foreground">Rolünüze uygun panele erişim sağlayın</p>
+              <h2 className="text-3xl font-semibold mb-4">Demo Paneller</h2>
+              <p className="text-muted-foreground">Sistem özelliklerini keşfetmek için demo panelleri kullanın</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
