@@ -16,8 +16,10 @@ import { db } from "@/lib/firebase";
 export interface Appointment {
   id?: string;
   patientId: string;
+  patientName?: string;
   doctor: string;
   doctorId: string;
+  doctorName?: string;
   date: string;
   time: string;
   type: string;
@@ -89,28 +91,70 @@ export interface PatientInfo {
 // Hasta bilgilerini getir
 export const getPatientInfo = async (userId: string): Promise<PatientInfo | null> => {
   try {
-    console.log("Hasta bilgileri getiriliyor, userId:", userId);
+    console.log("👤 Hasta bilgileri getiriliyor, userId:", userId);
     
-    const q = query(collection(db, "patients"), where("userId", "==", userId));
-    const querySnapshot = await getDocs(q);
+    // Önce users koleksiyonundan hasta bilgilerini çek
+    const usersQuery = query(collection(db, "users"), where("userId", "==", userId));
+    const usersSnapshot = await getDocs(usersQuery);
     
-    console.log("Sorgu sonucu:", querySnapshot.size, "doküman bulundu");
+    console.log("👥 Users sorgu sonucu:", usersSnapshot.size, "doküman bulundu");
     
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      const patientData = { id: doc.id, ...doc.data() } as PatientInfo;
-      console.log("Hasta bilgileri:", patientData);
+    if (!usersSnapshot.empty) {
+      const userDoc = usersSnapshot.docs[0];
+      const userData = userDoc.data();
+      console.log("👤 User verisi:", userData);
+      
+      // PatientInfo formatına dönüştür
+      const patientData: PatientInfo = {
+        id: userDoc.id,
+        userId: userData.userId || userId,
+        name: userData.name || "Bilinmeyen Hasta",
+        email: userData.email || "",
+        phone: userData.phone || "",
+        address: userData.address || "",
+        birthDate: userData.birthDate || "",
+        bloodType: userData.bloodType || "",
+        gender: userData.gender || "other",
+        emergencyContact: userData.emergencyContact || {
+          name: "",
+          phone: "",
+          relationship: ""
+        },
+        medicalHistory: userData.medicalHistory || [],
+        allergies: userData.allergies || [],
+        currentMedications: userData.currentMedications || [],
+        insuranceInfo: userData.insuranceInfo,
+        createdAt: userData.createdAt || Timestamp.now(),
+        updatedAt: userData.updatedAt || Timestamp.now()
+      };
+      
+      console.log("✅ Hasta bilgileri başarıyla getirildi:", patientData);
       return patientData;
     }
     
-    console.log("Hasta bilgileri bulunamadı");
+    // Eğer users'da bulunamazsa patients koleksiyonunu da kontrol et
+    console.log("🔍 Patients koleksiyonunda aranıyor...");
+    const patientsQuery = query(collection(db, "patients"), where("userId", "==", userId));
+    const patientsSnapshot = await getDocs(patientsQuery);
+    
+    console.log("🏥 Patients sorgu sonucu:", patientsSnapshot.size, "doküman bulundu");
+    
+    if (!patientsSnapshot.empty) {
+      const doc = patientsSnapshot.docs[0];
+      const patientData = { id: doc.id, ...doc.data() } as PatientInfo;
+      console.log("✅ Patients koleksiyonundan hasta bilgileri:", patientData);
+      return patientData;
+    }
+    
+    console.log("❌ Hasta bilgileri bulunamadı");
     return null;
-  } catch (error) {
-    console.error("Hasta bilgileri getirilemedi:", error);
-    console.error("Hata detayları:", {
+  } catch (error: any) {
+    console.error("❌ Hasta bilgileri getirilemedi:", error);
+    console.error("🔍 Hata detayları:", {
       userId,
-      errorCode: (error as any).code,
-      errorMessage: (error as any).message
+      errorCode: error.code,
+      errorMessage: error.message,
+      stack: error.stack
     });
     throw error;
   }
@@ -165,19 +209,52 @@ export const savePatientInfo = async (patientInfo: Omit<PatientInfo, "id" | "cre
 // Randevuları getir
 export const getAppointments = async (patientId: string): Promise<Appointment[]> => {
   try {
-    const q = query(
-      collection(db, "appointments"), 
-      where("patientId", "==", patientId),
-      orderBy("date", "desc")
-    );
-    const querySnapshot = await getDocs(q);
+    console.log("📅 Randevular getiriliyor, patientId:", patientId);
     
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Appointment[];
-  } catch (error) {
-    console.error("Randevular getirilemedi:", error);
+    // Önce index olmadan deneyelim
+    try {
+      const q = query(
+        collection(db, "appointments"), 
+        where("patientId", "==", patientId),
+        orderBy("date", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const appointments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Appointment[];
+      
+      console.log("✅ Randevular başarıyla getirildi:", appointments.length);
+      return appointments;
+    } catch (indexError: any) {
+      console.log("⚠️ Index hatası, sıralama olmadan deniyorum...");
+      
+      // Index hatası varsa sıralama olmadan dene
+      const q = query(
+        collection(db, "appointments"), 
+        where("patientId", "==", patientId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const appointments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Appointment[];
+      
+      // Client-side sıralama
+      appointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      console.log("✅ Randevular (client-side sıralama ile) getirildi:", appointments.length);
+      return appointments;
+    }
+  } catch (error: any) {
+    console.error("❌ Randevular getirilemedi:", error);
+    console.error("🔍 Hata detayları:", {
+      patientId,
+      errorCode: error.code,
+      errorMessage: error.message
+    });
     throw error;
   }
 };
@@ -185,6 +262,28 @@ export const getAppointments = async (patientId: string): Promise<Appointment[]>
 // Yeni randevu oluştur
 export const createAppointment = async (appointment: Omit<Appointment, "id" | "createdAt" | "updatedAt">): Promise<string> => {
   try {
+    console.log("📅 Randevu oluşturuluyor...");
+    console.log("📝 Randevu verisi:", appointment);
+    
+    // Veri doğrulama
+    if (!appointment.patientId) {
+      throw new Error("Hasta ID gereklidir");
+    }
+    if (!appointment.doctorId) {
+      throw new Error("Doktor ID gereklidir");
+    }
+    if (!appointment.date) {
+      throw new Error("Tarih gereklidir");
+    }
+    if (!appointment.time) {
+      throw new Error("Saat gereklidir");
+    }
+    if (!appointment.type) {
+      throw new Error("Randevu türü gereklidir");
+    }
+    
+    console.log("✅ Veri doğrulama başarılı");
+    
     const now = Timestamp.now();
     const data = {
       ...appointment,
@@ -192,10 +291,24 @@ export const createAppointment = async (appointment: Omit<Appointment, "id" | "c
       updatedAt: now
     };
     
-    const docRef = await addDoc(collection(db, "appointments"), data);
+    console.log("💾 Firebase'e kaydediliyor...");
+    console.log("📊 Kaydedilecek veri:", data);
+    
+    const appointmentsRef = collection(db, "appointments");
+    console.log("📋 Appointments koleksiyonu referansı:", appointmentsRef);
+    
+    const docRef = await addDoc(appointmentsRef, data);
+    
+    console.log("✅ Randevu başarıyla oluşturuldu, ID:", docRef.id);
     return docRef.id;
-  } catch (error) {
-    console.error("Randevu oluşturulamadı:", error);
+  } catch (error: any) {
+    console.error("❌ Randevu oluşturulamadı:", error);
+    console.error("🔍 Hata detayları:", {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
     throw error;
   }
 };
@@ -203,13 +316,33 @@ export const createAppointment = async (appointment: Omit<Appointment, "id" | "c
 // Randevu güncelle
 export const updateAppointment = async (appointmentId: string, updates: Partial<Appointment>): Promise<void> => {
   try {
+    console.log("📝 Randevu güncelleniyor...");
+    console.log("🆔 Randevu ID:", appointmentId);
+    console.log("📋 Güncelleme verileri:", updates);
+    
     const docRef = doc(db, "appointments", appointmentId);
-    await updateDoc(docRef, {
+    console.log("📋 Doküman referansı:", docRef);
+    
+    const updateData = {
       ...updates,
       updatedAt: Timestamp.now()
+    };
+    
+    console.log("💾 Firebase'e güncelleniyor...");
+    console.log("📊 Güncellenecek veri:", updateData);
+    
+    await updateDoc(docRef, updateData);
+    
+    console.log("✅ Randevu başarıyla güncellendi");
+  } catch (error: any) {
+    console.error("❌ Randevu güncellenemedi:", error);
+    console.error("🔍 Hata detayları:", {
+      appointmentId,
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
     });
-  } catch (error) {
-    console.error("Randevu güncellenemedi:", error);
     throw error;
   }
 };
@@ -228,19 +361,130 @@ export const deleteAppointment = async (appointmentId: string): Promise<void> =>
 // Reçeteleri getir
 export const getPrescriptions = async (patientId: string): Promise<Prescription[]> => {
   try {
-    const q = query(
-      collection(db, "prescriptions"), 
-      where("patientId", "==", patientId),
-      orderBy("date", "desc")
-    );
-    const querySnapshot = await getDocs(q);
+    console.log("💊 Hasta reçeteleri getiriliyor, patientId:", patientId);
     
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Prescription[];
+    const prescriptionsRef = collection(db, "prescriptions");
+    
+    try {
+      // Önce orderBy ile deneyelim
+      const q = query(
+        prescriptionsRef, 
+        where("patientId", "==", patientId),
+        orderBy("date", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const prescriptions = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Prescription[];
+      
+      console.log("✅ Reçeteler başarıyla getirildi (orderBy ile):", prescriptions.length);
+      
+      // Doktor bilgilerini getir
+      const prescriptionsWithDoctorInfo = await Promise.all(
+        prescriptions.map(async (prescription) => {
+          if (prescription.doctorId) {
+            try {
+              console.log("👨‍⚕️ Doktor bilgileri getiriliyor, doctorId:", prescription.doctorId);
+              
+              // users koleksiyonundan doktor bilgilerini çek
+              const usersQuery = query(
+                collection(db, "users"), 
+                where("userId", "==", prescription.doctorId)
+              );
+              const usersSnapshot = await getDocs(usersQuery);
+              
+              if (!usersSnapshot.empty) {
+                const doctorData = usersSnapshot.docs[0].data();
+                console.log("✅ Doktor bilgileri bulundu:", doctorData.name);
+                
+                return {
+                  ...prescription,
+                  doctor: doctorData.name || prescription.doctor || "Bilinmeyen Doktor"
+                };
+              } else {
+                console.warn("⚠️ Doktor bilgileri bulunamadı, doctorId:", prescription.doctorId);
+                return prescription;
+              }
+            } catch (error) {
+              console.error("❌ Doktor bilgileri getirilemedi:", error);
+              return prescription;
+            }
+          } else {
+            console.log("ℹ️ Doktor ID yok, mevcut doktor bilgisi kullanılıyor:", prescription.doctor);
+            return prescription;
+          }
+        })
+      );
+      
+      return prescriptionsWithDoctorInfo;
+      
+    } catch (indexError: any) {
+      // Index hatası varsa, orderBy olmadan deneyelim
+      if (indexError.code === 'failed-precondition' || indexError.message.includes('index')) {
+        console.log("⚠️ Index hatası, orderBy olmadan deneyelim...");
+        
+        const q = query(
+          prescriptionsRef, 
+          where("patientId", "==", patientId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const prescriptions = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Prescription[];
+        
+        // Client-side sorting
+        prescriptions.sort((a, b) => b.date.localeCompare(a.date));
+        
+        console.log("✅ Reçeteler başarıyla getirildi (client-side sorted):", prescriptions.length);
+        
+        // Doktor bilgilerini getir
+        const prescriptionsWithDoctorInfo = await Promise.all(
+          prescriptions.map(async (prescription) => {
+            if (prescription.doctorId) {
+              try {
+                console.log("👨‍⚕️ Doktor bilgileri getiriliyor, doctorId:", prescription.doctorId);
+                
+                // users koleksiyonundan doktor bilgilerini çek
+                const usersQuery = query(
+                  collection(db, "users"), 
+                  where("userId", "==", prescription.doctorId)
+                );
+                const usersSnapshot = await getDocs(usersQuery);
+                
+                if (!usersSnapshot.empty) {
+                  const doctorData = usersSnapshot.docs[0].data();
+                  console.log("✅ Doktor bilgileri bulundu:", doctorData.name);
+                  
+                  return {
+                    ...prescription,
+                    doctor: doctorData.name || prescription.doctor || "Bilinmeyen Doktor"
+                  };
+                } else {
+                  console.warn("⚠️ Doktor bilgileri bulunamadı, doctorId:", prescription.doctorId);
+                  return prescription;
+                }
+              } catch (error) {
+                console.error("❌ Doktor bilgileri getirilemedi:", error);
+                return prescription;
+              }
+            } else {
+              console.log("ℹ️ Doktor ID yok, mevcut doktor bilgisi kullanılıyor:", prescription.doctor);
+              return prescription;
+            }
+          })
+        );
+        
+        return prescriptionsWithDoctorInfo;
+      } else {
+        throw indexError;
+      }
+    }
   } catch (error) {
-    console.error("Reçeteler getirilemedi:", error);
+    console.error("❌ Reçeteler getirilemedi:", error);
     throw error;
   }
 };
@@ -268,15 +512,30 @@ export const getTestResults = async (patientId: string): Promise<TestResult[]> =
 // Doktorları getir
 export const getDoctors = async (): Promise<any[]> => {
   try {
-    const q = query(collection(db, "doctors"), where("status", "==", "active"));
+    console.log("👨‍⚕️ Firebase'den doktorlar getiriliyor...");
+    
+    // users koleksiyonundan doktorları çek
+    const q = query(
+      collection(db, "users"), 
+      where("role", "==", "doctor"),
+      where("status", "==", "active")
+    );
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => ({
+    const doctors = querySnapshot.docs.map(doc => ({
       id: doc.id,
+      name: doc.data().name || "Bilinmeyen Doktor",
+      specialty: doc.data().specialty || "Genel",
+      department: doc.data().department || "Genel Bölüm",
       ...doc.data()
     }));
+    
+    console.log("✅ Doktorlar başarıyla getirildi:", doctors.length);
+    console.log("📋 Doktor listesi:", doctors);
+    
+    return doctors;
   } catch (error) {
-    console.error("Doktorlar getirilemedi:", error);
+    console.error("❌ Doktorlar getirilemedi:", error);
     throw error;
   }
 };

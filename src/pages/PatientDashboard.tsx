@@ -79,32 +79,54 @@ const PatientDashboard = () => {
     try {
       setLoading(true);
       
+      console.log("🔄 Hasta verileri yükleniyor...");
+      console.log("👤 Kullanıcı ID:", user!.uid);
+      
       // Hasta bilgilerini getir
       const patient = await getPatientInfo(user!.uid);
+      console.log("📋 Hasta bilgileri:", patient);
       setPatientInfo(patient);
 
       if (patient) {
+        console.log("✅ Hasta bulundu, diğer veriler yükleniyor...");
+        
         // Randevuları getir
         const appointmentsData = await getAppointments(patient.id!);
+        console.log("📅 Randevular:", appointmentsData);
         setAppointments(appointmentsData);
 
         // Reçeteleri getir
         const prescriptionsData = await getPrescriptions(patient.id!);
+        console.log("💊 Reçeteler:", prescriptionsData);
         setPrescriptions(prescriptionsData);
 
         // Test sonuçlarını getir
         const testResultsData = await getTestResults(patient.id!);
+        console.log("🔬 Test sonuçları:", testResultsData);
         setTestResults(testResultsData);
 
         // Bildirimleri getir
         const notificationsData = await getNotifications(patient.id!);
+        console.log("🔔 Bildirimler:", notificationsData);
         setNotifications(notificationsData);
+      } else {
+        console.error("❌ Hasta bilgileri bulunamadı");
+        toast({
+          title: "Hata",
+          description: "Hasta bilgileri bulunamadı.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error("Veriler yüklenemedi:", error);
+    } catch (error: any) {
+      console.error("❌ Veriler yüklenemedi:", error);
+      console.error("🔍 Hata detayları:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       toast({
         title: "Hata",
-        description: "Veriler yüklenirken bir hata oluştu.",
+        description: `Veriler yüklenirken hata oluştu: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -580,6 +602,7 @@ const PatientDashboard = () => {
             isOpen={showNewAppointmentModal}
             onClose={() => setShowNewAppointmentModal(false)}
             patientId={patientInfo.id!}
+            patientName={patientInfo.name || "Bilinmeyen Hasta"}
             onSuccess={handleAppointmentSuccess}
           />
         )}

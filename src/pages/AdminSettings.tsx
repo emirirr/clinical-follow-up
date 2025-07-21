@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminNavbar from "@/components/AdminNavbar";
+import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 interface SystemSettings {
   clinicName: string;
@@ -55,7 +60,7 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSettings>({
-    clinicName: "Klinik Takip Sistemi",
+    clinicName: "Klinik Takip",
     clinicAddress: "İstanbul, Türkiye",
     clinicPhone: "+90 212 555 0123",
     clinicEmail: "info@klinik.com",
@@ -77,25 +82,156 @@ const AdminSettings = () => {
       retentionDays: 30
     }
   });
+  const [showUserList, setShowUserList] = useState(false);
+  const [showActivityLogs, setShowActivityLogs] = useState(false);
+  const [showSecurityLogs, setShowSecurityLogs] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [securityLogs, setSecurityLogs] = useState<any[]>([]);
+
+  // Firebase'den ayarları yükle
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      
+      console.log("🔧 Firebase'den ayarlar yükleniyor...");
+      
+      // Firestore'dan ayarları çek
+      const settingsRef = doc(db, "settings", "system");
+      const settingsSnapshot = await getDoc(settingsRef);
+      
+      if (settingsSnapshot.exists()) {
+        const firebaseSettings = settingsSnapshot.data();
+        console.log("✅ Ayarlar yüklendi:", firebaseSettings);
+        
+        setSettings({
+          clinicName: firebaseSettings.clinicName || "Klinik Takip",
+          clinicAddress: firebaseSettings.clinicAddress || "İstanbul, Türkiye",
+          clinicPhone: firebaseSettings.clinicPhone || "+90 212 555 0123",
+          clinicEmail: firebaseSettings.clinicEmail || "info@klinik.com",
+          timezone: firebaseSettings.timezone || "Europe/Istanbul",
+          language: firebaseSettings.language || "tr",
+          notifications: {
+            email: firebaseSettings.notifications?.email ?? true,
+            sms: firebaseSettings.notifications?.sms ?? false,
+            push: firebaseSettings.notifications?.push ?? true
+          },
+          security: {
+            twoFactorAuth: firebaseSettings.security?.twoFactorAuth ?? false,
+            sessionTimeout: firebaseSettings.security?.sessionTimeout ?? 30,
+            passwordPolicy: firebaseSettings.security?.passwordPolicy ?? "strong"
+          },
+          backup: {
+            autoBackup: firebaseSettings.backup?.autoBackup ?? true,
+            backupFrequency: firebaseSettings.backup?.backupFrequency ?? "daily",
+            retentionDays: firebaseSettings.backup?.retentionDays ?? 30
+          }
+        });
+      } else {
+        console.log("📝 Varsayılan ayarlar kullanılıyor");
+      }
+      
+      toast({
+        title: "Başarılı",
+        description: "Ayarlar başarıyla yüklendi.",
+      });
+      
+    } catch (error) {
+      console.error("❌ Ayarlar yüklenirken hata:", error);
+      toast({
+        title: "Hata",
+        description: "Ayarlar yüklenirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Kullanıcı listesini yükle
+  const loadUsers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const usersSnapshot = await getDocs(usersRef);
+      
+      const usersData = usersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setUsers(usersData);
+      console.log("👥 Kullanıcı listesi yüklendi:", usersData.length);
+      
+    } catch (error) {
+      console.error("❌ Kullanıcı listesi yüklenirken hata:", error);
+    }
+  };
+
+  // Aktivite loglarını yükle
+  const loadActivityLogs = async () => {
+    try {
+      const logsRef = collection(db, "activityLogs");
+      const logsSnapshot = await getDocs(logsRef);
+      
+      const logsData = logsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setActivityLogs(logsData);
+      console.log("📊 Aktivite logları yüklendi:", logsData.length);
+      
+    } catch (error) {
+      console.error("❌ Aktivite logları yüklenirken hata:", error);
+    }
+  };
+
+  // Güvenlik loglarını yükle
+  const loadSecurityLogs = async () => {
+    try {
+      const logsRef = collection(db, "securityLogs");
+      const logsSnapshot = await getDocs(logsRef);
+      
+      const logsData = logsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setSecurityLogs(logsData);
+      console.log("🔒 Güvenlik logları yüklendi:", logsData.length);
+      
+    } catch (error) {
+      console.error("❌ Güvenlik logları yüklenirken hata:", error);
+    }
+  };
 
   useEffect(() => {
-    // Simüle edilmiş veri yükleme
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    loadSettings();
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Simüle edilmiş kaydetme işlemi
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("💾 Ayarlar kaydediliyor...");
+      console.log("📝 Kaydedilecek ayarlar:", settings);
+      
+      // Firestore'a ayarları kaydet
+      const settingsRef = doc(db, "settings", "system");
+      await setDoc(settingsRef, {
+        ...settings,
+        updatedAt: new Date(),
+        updatedBy: user?.email || "admin"
+      });
+      
+      console.log("✅ Ayarlar başarıyla kaydedildi");
       
       toast({
         title: "Başarılı",
         description: "Ayarlar başarıyla kaydedildi.",
       });
     } catch (error) {
+      console.error("❌ Ayarlar kaydedilirken hata:", error);
       toast({
         title: "Hata",
         description: "Ayarlar kaydedilirken bir hata oluştu.",
@@ -138,8 +274,48 @@ const AdminSettings = () => {
             <p className="text-gray-600">Klinik sistem konfigürasyonu</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button 
+              variant="outline" 
+              onClick={loadSettings}
+              disabled={loading}
+            >
               <RefreshCw className="h-4 w-4 mr-2" />
+              Yenile
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (confirm("Ayarları varsayılan değerlere sıfırlamak istediğinizden emin misiniz?")) {
+                  setSettings({
+                    clinicName: "Klinik Takip",
+                    clinicAddress: "İstanbul, Türkiye",
+                    clinicPhone: "+90 212 555 0123",
+                    clinicEmail: "info@klinik.com",
+                    timezone: "Europe/Istanbul",
+                    language: "tr",
+                    notifications: {
+                      email: true,
+                      sms: false,
+                      push: true
+                    },
+                    security: {
+                      twoFactorAuth: false,
+                      sessionTimeout: 30,
+                      passwordPolicy: "strong"
+                    },
+                    backup: {
+                      autoBackup: true,
+                      backupFrequency: "daily",
+                      retentionDays: 30
+                    }
+                  });
+                  toast({
+                    title: "Sıfırlandı",
+                    description: "Ayarlar varsayılan değerlere sıfırlandı.",
+                  });
+                }
+              }}
+            >
               Sıfırla
             </Button>
             <Button onClick={handleSave} disabled={saving}>
@@ -362,11 +538,87 @@ const AdminSettings = () => {
                 />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      console.log("📦 Manuel yedekleme başlatılıyor...");
+                      
+                      // Tüm koleksiyonları yedekle
+                      const collections = ["users", "appointments", "settings"];
+                      const backupData: any = {};
+                      
+                      for (const collectionName of collections) {
+                        const collectionRef = collection(db, collectionName);
+                        const snapshot = await getDocs(collectionRef);
+                        backupData[collectionName] = snapshot.docs.map(doc => ({
+                          id: doc.id,
+                          ...doc.data()
+                        }));
+                      }
+                      
+                      // Yedekleme verilerini localStorage'a kaydet
+                      localStorage.setItem("clinicBackup", JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        data: backupData
+                      }));
+                      
+                      console.log("✅ Yedekleme tamamlandı:", backupData);
+                      
+                      toast({
+                        title: "Başarılı",
+                        description: "Manuel yedekleme tamamlandı.",
+                      });
+                      
+                    } catch (error) {
+                      console.error("❌ Yedekleme hatası:", error);
+                      toast({
+                        title: "Hata",
+                        description: "Yedekleme sırasında hata oluştu.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Manuel Yedekleme
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      console.log("📥 Geri yükleme başlatılıyor...");
+                      
+                      const backupData = localStorage.getItem("clinicBackup");
+                      if (!backupData) {
+                        toast({
+                          title: "Hata",
+                          description: "Yedekleme verisi bulunamadı.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      const backup = JSON.parse(backupData);
+                      console.log("📦 Yedekleme verisi:", backup);
+                      
+                      toast({
+                        title: "Bilgi",
+                        description: "Geri yükleme özelliği yakında eklenecek.",
+                      });
+                      
+                    } catch (error) {
+                      console.error("❌ Geri yükleme hatası:", error);
+                      toast({
+                        title: "Hata",
+                        description: "Geri yükleme sırasında hata oluştu.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Geri Yükle
                 </Button>
@@ -387,21 +639,77 @@ const AdminSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    // localStorage'ı temizle
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    toast({
+                      title: "Başarılı",
+                      description: "Önbellek temizlendi.",
+                    });
+                  }}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Önbellek Temizle
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Sistem Yenile
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      console.log("🔧 Veritabanı optimizasyonu başlatılıyor...");
+                      
+                      // Tüm koleksiyonları kontrol et
+                      const collections = ["users", "appointments", "settings"];
+                      let totalDocs = 0;
+                      
+                      for (const collectionName of collections) {
+                        const collectionRef = collection(db, collectionName);
+                        const snapshot = await getDocs(collectionRef);
+                        totalDocs += snapshot.docs.length;
+                      }
+                      
+                      console.log("📊 Toplam doküman sayısı:", totalDocs);
+                      
+                      toast({
+                        title: "Başarılı",
+                        description: `Veritabanı kontrol edildi. Toplam ${totalDocs} doküman.`,
+                      });
+                      
+                    } catch (error) {
+                      console.error("❌ Optimizasyon hatası:", error);
+                      toast({
+                        title: "Hata",
+                        description: "Veritabanı optimizasyonu sırasında hata oluştu.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
                   <Database className="h-4 w-4 mr-2" />
                   Veritabanı Optimize Et
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowApiKeys(true)}
+                >
                   <Key className="h-4 w-4 mr-2" />
                   API Anahtarları
                 </Button>
@@ -422,21 +730,51 @@ const AdminSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    await loadUsers();
+                    setShowUserList(true);
+                  }}
+                >
                   <Users className="h-4 w-4 mr-2" />
                   Kullanıcı Listesi
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    toast({
+                      title: "Bilgi",
+                      description: "İzinler yönetimi yakında eklenecek.",
+                    });
+                  }}
+                >
                   <Key className="h-4 w-4 mr-2" />
                   İzinler
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    await loadActivityLogs();
+                    setShowActivityLogs(true);
+                  }}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Aktivite Logları
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={async () => {
+                    await loadSecurityLogs();
+                    setShowSecurityLogs(true);
+                  }}
+                >
                   <Shield className="h-4 w-4 mr-2" />
                   Güvenlik Logları
                 </Button>
@@ -444,6 +782,161 @@ const AdminSettings = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Kullanıcı Listesi Modalı */}
+        <Dialog open={showUserList} onOpenChange={setShowUserList}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Kullanıcı Listesi</DialogTitle>
+              <DialogDescription>
+                Sistemdeki tüm kullanıcılar
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {users.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Henüz kullanıcı bulunmuyor</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {users.map((user, index) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-medium">
+                            {user.name?.charAt(0) || "U"}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{user.name || "İsimsiz Kullanıcı"}</p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                          {user.role || "user"}
+                        </Badge>
+                        <Badge variant={user.status === "active" ? "default" : "destructive"}>
+                          {user.status || "inactive"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Aktivite Logları Modalı */}
+        <Dialog open={showActivityLogs} onOpenChange={setShowActivityLogs}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Aktivite Logları</DialogTitle>
+              <DialogDescription>
+                Sistem aktivite kayıtları
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {activityLogs.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Henüz aktivite logu bulunmuyor</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activityLogs.map((log, index) => (
+                    <div key={log.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-medium">{log.action || "Bilinmeyen İşlem"}</p>
+                        <span className="text-sm text-gray-500">
+                          {new Date(log.timestamp?.toDate()).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{log.description || "Açıklama yok"}</p>
+                      <p className="text-xs text-gray-500 mt-1">Kullanıcı: {log.user || "Bilinmeyen"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Güvenlik Logları Modalı */}
+        <Dialog open={showSecurityLogs} onOpenChange={setShowSecurityLogs}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Güvenlik Logları</DialogTitle>
+              <DialogDescription>
+                Sistem güvenlik kayıtları
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {securityLogs.length === 0 ? (
+                <div className="text-center py-8">
+                  <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Henüz güvenlik logu bulunmuyor</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {securityLogs.map((log, index) => (
+                    <div key={log.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-medium">{log.event || "Bilinmeyen Olay"}</p>
+                        <Badge variant={log.severity === "high" ? "destructive" : "secondary"}>
+                          {log.severity || "medium"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">{log.description || "Açıklama yok"}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(log.timestamp?.toDate()).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* API Anahtarları Modalı */}
+        <Dialog open={showApiKeys} onOpenChange={setShowApiKeys}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>API Anahtarları</DialogTitle>
+              <DialogDescription>
+                Sistem API anahtarları ve konfigürasyonu
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium mb-2">Firebase Konfigürasyonu</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Project ID:</span>
+                    <span className="font-mono">kliniktakip-95901</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Auth Domain:</span>
+                    <span className="font-mono">kliniktakip-95901.firebaseapp.com</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Storage Bucket:</span>
+                    <span className="font-mono">kliniktakip-95901.firebasestorage.app</span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium mb-2">API Anahtarları</h4>
+                <p className="text-sm text-gray-600">
+                  API anahtarları güvenlik nedeniyle gizli tutulmaktadır.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

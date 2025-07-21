@@ -53,7 +53,7 @@ const Login = () => {
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">
-              Klinik Takip Sistemi
+              Klinik Takip
             </CardTitle>
             <CardDescription className="text-center">
               Hesabınıza giriş yapın

@@ -210,24 +210,24 @@ const AdminDashboard = () => {
   };
 
   // İstatistikleri yükle
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setStatsLoading(true);
-        const adminStats = await getAdminStats();
-        setStats(adminStats);
-      } catch (error) {
-        console.error("İstatistikler yüklenirken hata:", error);
-        toast({
-          title: "Hata",
-          description: "İstatistikler yüklenirken bir hata oluştu.",
-          variant: "destructive",
-        });
-      } finally {
-        setStatsLoading(false);
-      }
-    };
+  const loadStats = async () => {
+    try {
+      setStatsLoading(true);
+      const adminStats = await getAdminStats();
+      setStats(adminStats);
+    } catch (error) {
+      console.error("İstatistikler yüklenirken hata:", error);
+      toast({
+        title: "Hata",
+        description: "İstatistikler yüklenirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadStats();
   }, [toast]);
 
@@ -419,13 +419,69 @@ const AdminDashboard = () => {
           {/* Son Randevular */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Son Randevular
-              </CardTitle>
-              <CardDescription>
-                Son 5 randevu
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Son Randevular
+                  </CardTitle>
+                  <CardDescription>
+                    Son 5 randevu
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      console.log("🧪 Test randevu ekleniyor...");
+                      
+                      const testAppointment = {
+                        patientId: "test-patient-" + Date.now(),
+                        patientName: "Test Hasta " + new Date().getTime(),
+                        doctorId: "test-doctor-" + Date.now(),
+                        doctorName: "Dr. Test " + new Date().getTime(),
+                        date: new Date().toISOString().split('T')[0], // Bugünün tarihi
+                        time: "10:00",
+                        type: "Test Muayene",
+                        location: "Test Bölümü",
+                        notes: "Test randevu notu - " + new Date().toLocaleString(),
+                        status: "upcoming",
+                        createdAt: new Date()
+                      };
+                      
+                      console.log("📝 Test randevu verisi:", testAppointment);
+                      
+                      const { collection, addDoc } = await import("firebase/firestore");
+                      const { db } = await import("@/lib/firebase");
+                      
+                      const appointmentsRef = collection(db, "appointments");
+                      const docRef = await addDoc(appointmentsRef, testAppointment);
+                      console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
+                      
+                      toast({
+                        title: "Başarılı",
+                        description: `Test randevu eklendi. ID: ${docRef.id}`,
+                      });
+                      
+                      // 2 saniye sonra istatistikleri yenile
+                      setTimeout(() => {
+                        loadStats();
+                      }, 2000);
+                      
+                    } catch (error) {
+                      console.error("❌ Test randevu ekleme hatası:", error);
+                      toast({
+                        title: "Hata",
+                        description: "Test randevu eklenirken hata oluştu.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  Test Randevu Ekle
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -440,13 +496,35 @@ const AdminDashboard = () => {
               ) : stats.recentAppointments.length > 0 ? (
                 <div className="space-y-3">
                   {stats.recentAppointments.map((appointment: any) => (
-                    <div key={appointment.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
-                      <div>
-                        <div className="font-medium text-sm">{appointment.patientName}</div>
-                        <div className="text-xs text-gray-500">{appointment.doctorName}</div>
+                    <div key={appointment.id} className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-gray-900">{appointment.patientName}</div>
+                          <div className="text-xs text-gray-600">{appointment.doctorName}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-medium text-gray-900">
+                            {appointment.date ? new Date(appointment.date).toLocaleDateString('tr-TR') : "Tarih yok"}
+                          </div>
+                          <div className="text-xs text-gray-500">{appointment.time}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {appointment.date} {appointment.time}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            appointment.status === "completed" ? "bg-green-500" :
+                            appointment.status === "cancelled" ? "bg-red-500" :
+                            "bg-blue-500"
+                          }`}></div>
+                          <span className="text-xs text-gray-600 capitalize">
+                            {appointment.status === "completed" ? "Tamamlandı" :
+                             appointment.status === "cancelled" ? "İptal Edildi" :
+                             appointment.status === "upcoming" ? "Yaklaşan" : appointment.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {appointment.type || "Muayene"}
+                        </div>
                       </div>
                     </div>
                   ))}

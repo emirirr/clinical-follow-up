@@ -37,27 +37,58 @@ const validateFirebaseConfig = () => {
 export const testFirebaseConnection = async () => {
   try {
     console.log('🔍 Firebase bağlantısı test ediliyor...');
+    console.log('📊 Firebase db objesi:', db);
     
     // Firestore bağlantısını test et
+    console.log('📋 Test koleksiyonu oluşturuluyor...');
     const testCollection = collection(db, "test");
+    console.log('📋 Test koleksiyonu referansı:', testCollection);
+    
+    console.log('⏳ Test koleksiyonu verileri çekiliyor...');
     const testSnapshot = await getDocs(testCollection);
     
     console.log('✅ Firestore bağlantısı başarılı');
     console.log('📊 Test koleksiyonu doküman sayısı:', testSnapshot.docs.length);
     
     // Users koleksiyonunu test et
+    console.log('📋 Users koleksiyonu oluşturuluyor...');
     const usersCollection = collection(db, "users");
+    console.log('📋 Users koleksiyonu referansı:', usersCollection);
+    
+    console.log('⏳ Users koleksiyonu verileri çekiliyor...');
     const usersSnapshot = await getDocs(usersCollection);
     
     console.log('✅ Users koleksiyonu erişilebilir');
     console.log('👥 Toplam kullanıcı sayısı:', usersSnapshot.docs.length);
     
+    // Users dokümanlarını detaylı logla
+    usersSnapshot.docs.forEach((doc, index) => {
+      console.log(`👤 Kullanıcı ${index + 1}:`, {
+        id: doc.id,
+        data: doc.data(),
+        exists: doc.exists()
+      });
+    });
+    
     // Appointments koleksiyonunu test et
+    console.log('📋 Appointments koleksiyonu oluşturuluyor...');
     const appointmentsCollection = collection(db, "appointments");
+    console.log('📋 Appointments koleksiyonu referansı:', appointmentsCollection);
+    
+    console.log('⏳ Appointments koleksiyonu verileri çekiliyor...');
     const appointmentsSnapshot = await getDocs(appointmentsCollection);
     
     console.log('✅ Appointments koleksiyonu erişilebilir');
     console.log('📅 Toplam randevu sayısı:', appointmentsSnapshot.docs.length);
+    
+    // Appointments dokümanlarını detaylı logla
+    appointmentsSnapshot.docs.forEach((doc, index) => {
+      console.log(`📅 Randevu ${index + 1}:`, {
+        id: doc.id,
+        data: doc.data(),
+        exists: doc.exists()
+      });
+    });
     
     return {
       success: true,
@@ -68,6 +99,11 @@ export const testFirebaseConnection = async () => {
     
   } catch (error) {
     console.error('❌ Firebase bağlantı testi başarısız:', error);
+    console.error('🔍 Hata detayları:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     return {
       success: false,
       error: error,

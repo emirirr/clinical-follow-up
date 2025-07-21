@@ -26,6 +26,8 @@ import {
 } from "@/services/patientService";
 import PatientNavbar from "@/components/PatientNavbar";
 import NewAppointmentModal from "@/components/NewAppointmentModal";
+import EditAppointmentModal from "@/components/EditAppointmentModal";
+import AppointmentDetailModal from "@/components/AppointmentDetailModal";
 
 const PatientAppointments = () => {
   const { user } = useAuth();
@@ -35,6 +37,9 @@ const PatientAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
+  const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   // Verileri yükle
@@ -96,6 +101,40 @@ const PatientAppointments = () => {
     }
   };
 
+  const handleEditAppointment = (appointment: any) => {
+    console.log("📝 Düzenlenecek randevu:", appointment);
+    setSelectedAppointment(appointment);
+    setShowEditAppointmentModal(true);
+  };
+
+  const handleEditSuccess = () => {
+    loadAppointments();
+    setShowEditAppointmentModal(false);
+    setSelectedAppointment(null);
+    toast({
+      title: "Başarılı",
+      description: "Randevu başarıyla güncellendi.",
+    });
+  };
+
+  const handleShowDetail = (appointment: any) => {
+    console.log("📋 Detayları gösterilecek randevu:", appointment);
+    setSelectedAppointment(appointment);
+    setShowDetailModal(true);
+  };
+
+  const handleDetailEdit = () => {
+    setShowDetailModal(false);
+    setShowEditAppointmentModal(true);
+  };
+
+  const handleDetailDelete = () => {
+    setShowDetailModal(false);
+    if (selectedAppointment?.id) {
+      handleDeleteAppointment(selectedAppointment.id);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
@@ -124,9 +163,12 @@ const PatientAppointments = () => {
 
   // Filtrelenmiş randevular
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = appointment.doctor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === "all" || appointment.status === filterStatus;
+    const doctorName = appointment.doctor || appointment.doctorName || "";
+    const appointmentType = appointment.type || "";
+    
+    const matchesSearch = doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         appointmentType.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === "all" || (appointment.status || "upcoming") === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
@@ -231,25 +273,25 @@ const PatientAppointments = () => {
             </Card>
           ) : (
             filteredAppointments.map((appointment) => (
-              <Card key={appointment.id} className="hover:shadow-md transition-shadow">
+              <Card key={appointment.id || `appointment-${Math.random()}`} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <Calendar className="h-5 w-5 text-primary" />
-                        {appointment.type}
+                        {appointment.type || "Genel Muayene"}
                       </CardTitle>
                       <CardDescription>
-                        {new Date(appointment.date).toLocaleDateString('tr-TR', {
+                        {appointment.date ? new Date(appointment.date).toLocaleDateString('tr-TR', {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
-                        })}
+                        }) : "Tarih belirtilmemiş"}
                       </CardDescription>
                     </div>
-                    <Badge className={getStatusColor(appointment.status)}>
-                      {getStatusText(appointment.status)}
+                    <Badge className={getStatusColor(appointment.status || "upcoming")}>
+                      {getStatusText(appointment.status || "upcoming")}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -257,15 +299,15 @@ const PatientAppointments = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{appointment.doctor}</span>
+                      <span className="text-sm">{appointment.doctor || appointment.doctorName || "Bilinmeyen Doktor"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{appointment.time}</span>
+                      <span className="text-sm">{appointment.time || "Belirtilmemiş"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{appointment.location}</span>
+                      <span className="text-sm">{appointment.location || "Belirtilmemiş"}</span>
                     </div>
                     {appointment.notes && (
                       <div className="mt-3 p-3 bg-gray-50 rounded-lg">
@@ -273,16 +315,27 @@ const PatientAppointments = () => {
                       </div>
                     )}
                     <div className="flex justify-end gap-2 pt-2">
-                      {appointment.status === "upcoming" && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleShowDetail(appointment)}
+                      >
+                        Detayları Gör
+                      </Button>
+                      {(appointment.status || "upcoming") === "upcoming" && (
                         <>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditAppointment(appointment)}
+                          >
                             <Edit className="h-4 w-4 mr-1" />
                             Düzenle
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleDeleteAppointment(appointment.id!)}
+                            onClick={() => handleDeleteAppointment(appointment.id || "")}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
                             İptal Et
@@ -304,7 +357,35 @@ const PatientAppointments = () => {
           isOpen={showNewAppointmentModal}
           onClose={() => setShowNewAppointmentModal(false)}
           onSuccess={handleAppointmentSuccess}
-          patientId={patientInfo?.id}
+          patientId={patientInfo?.id || ""}
+          patientName={patientInfo?.name || "Bilinmeyen Hasta"}
+        />
+      )}
+
+      {/* Edit Appointment Modal */}
+      {showEditAppointmentModal && selectedAppointment && (
+        <EditAppointmentModal
+          isOpen={showEditAppointmentModal}
+          onClose={() => {
+            setShowEditAppointmentModal(false);
+            setSelectedAppointment(null);
+          }}
+          onSuccess={handleEditSuccess}
+          appointment={selectedAppointment}
+        />
+      )}
+
+      {/* Detail Appointment Modal */}
+      {showDetailModal && selectedAppointment && (
+        <AppointmentDetailModal
+          isOpen={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedAppointment(null);
+          }}
+          appointment={selectedAppointment}
+          onEdit={handleDetailEdit}
+          onDelete={handleDetailDelete}
         />
       )}
     </div>

@@ -19,7 +19,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import AdminNavbar from "@/components/AdminNavbar";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, addDoc } from "firebase/firestore";
 import { db, testFirebaseConnection } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -114,11 +114,33 @@ interface MonthlyTrend {
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       
-      const thisMonthAppointments = appointments.filter(appointment => {
-        const appointmentDate = new Date(appointment.date);
-        return appointmentDate.getMonth() === currentMonth && 
-               appointmentDate.getFullYear() === currentYear;
+      console.log("📅 Tarih filtreleme bilgileri:", {
+        currentMonth,
+        currentYear,
+        currentDate: currentDate.toISOString()
       });
+      
+      const thisMonthAppointments = appointments.filter(appointment => {
+        console.log("🔍 Randevu tarihi kontrol ediliyor:", {
+          appointmentDate: appointment.date,
+          appointmentId: appointment.id
+        });
+        
+        const appointmentDate = new Date(appointment.date);
+        const isThisMonth = appointmentDate.getMonth() === currentMonth && 
+                           appointmentDate.getFullYear() === currentYear;
+        
+        console.log("📊 Randevu bu ay mı?", {
+          appointmentDate: appointmentDate.toISOString(),
+          appointmentMonth: appointmentDate.getMonth(),
+          appointmentYear: appointmentDate.getFullYear(),
+          isThisMonth
+        });
+        
+        return isThisMonth;
+      });
+      
+      console.log("📈 Bu ayki randevular:", thisMonthAppointments.length);
       
       // Geçen ayki randevuları filtrele
       const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
@@ -129,6 +151,8 @@ interface MonthlyTrend {
         return appointmentDate.getMonth() === lastMonth && 
                appointmentDate.getFullYear() === lastMonthYear;
       });
+      
+      console.log("📉 Geçen ayki randevular:", lastMonthAppointments.length);
       
       // Randevu durumlarını hesapla
       const completedAppointments = thisMonthAppointments.filter(a => a.status === "completed").length;
@@ -141,13 +165,21 @@ interface MonthlyTrend {
       const appointmentGrowth = lastMonthAppointments.length > 0 ? 
         ((thisMonthAppointments.length - lastMonthAppointments.length) / lastMonthAppointments.length) * 100 : 0;
       
-      // Bölüm performansını hesapla
+      // Bölüm performansını hesapla (tüm randevular için)
       const departmentStats = doctors.reduce((acc: any, doctor) => {
         const department = doctor.data().department || "Bilinmeyen";
-        const doctorAppointments = thisMonthAppointments.filter(a => a.doctorId === doctor.id);
+        const doctorAppointments = appointments.filter(a => a.doctorId === doctor.id); // Tüm randevular
         const completedCount = doctorAppointments.filter(a => a.status === "completed").length;
         const totalCount = doctorAppointments.length;
         const performance = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+        
+        console.log("👨‍⚕️ Doktor randevu istatistikleri:", {
+          doctorName: doctor.data().name,
+          department,
+          totalAppointments: totalCount,
+          completedAppointments: completedCount,
+          performance
+        });
         
         if (!acc[department]) {
           acc[department] = { count: 0, completed: 0 };
@@ -164,15 +196,17 @@ interface MonthlyTrend {
         appointmentCount: stats.count
       }));
       
-      // En aktif doktorları hesapla
+      // En aktif doktorları hesapla (tüm randevular için)
       const doctorStats = doctors.map(doctor => {
-        const doctorAppointments = thisMonthAppointments.filter(a => a.doctorId === doctor.id);
+        const doctorAppointments = appointments.filter(a => a.doctorId === doctor.id); // Tüm randevular
         return {
           name: doctor.data().name,
           appointmentCount: doctorAppointments.length,
           department: doctor.data().department || "Bilinmeyen"
         };
       }).sort((a, b) => b.appointmentCount - a.appointmentCount).slice(0, 4);
+      
+      console.log("🏆 En aktif doktorlar:", doctorStats);
       
       // Aylık trendleri hesapla (son 4 ay)
       const monthlyTrendsData = [];
@@ -198,15 +232,23 @@ interface MonthlyTrend {
       const newReportData: ReportData = {
         totalPatients: patients.length,
         totalDoctors: doctors.length,
-        totalAppointments: thisMonthAppointments.length,
-        completedAppointments,
-        cancelledAppointments,
-        upcomingAppointments,
+        totalAppointments: appointments.length, // Tüm randevuları göster
+        completedAppointments: appointments.filter(a => a.status === "completed").length, // Tüm tamamlanan
+        cancelledAppointments: appointments.filter(a => a.status === "cancelled").length, // Tüm iptal edilen
+        upcomingAppointments: appointments.filter(a => a.status === "upcoming").length, // Tüm yaklaşan
         monthlyGrowth: appointmentGrowth,
         patientGrowth,
         doctorGrowth,
         appointmentGrowth
       };
+      
+      console.log("📊 Rapor verileri:", {
+        totalAppointments: appointments.length,
+        thisMonthAppointments: thisMonthAppointments.length,
+        completedAppointments: appointments.filter(a => a.status === "completed").length,
+        cancelledAppointments: appointments.filter(a => a.status === "cancelled").length,
+        upcomingAppointments: appointments.filter(a => a.status === "upcoming").length
+      });
       
       console.log("Rapor verileri:", newReportData);
       console.log("Bölüm performansı:", departmentPerformanceData);
@@ -292,6 +334,55 @@ interface MonthlyTrend {
               }}
             >
               Firebase Test
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                // Test randevu ekle
+                try {
+                  console.log("🧪 Test randevu ekleniyor...");
+                  
+                  const testAppointment = {
+                    patientId: "test-patient-" + Date.now(),
+                    patientName: "Test Hasta " + new Date().getTime(),
+                    doctorId: "test-doctor-" + Date.now(),
+                    doctorName: "Dr. Test " + new Date().getTime(),
+                    date: new Date().toISOString().split('T')[0], // Bugünün tarihi
+                    time: "10:00",
+                    type: "Test Muayene",
+                    location: "Test Bölümü",
+                    notes: "Test randevu notu - " + new Date().toLocaleString(),
+                    status: "upcoming",
+                    createdAt: new Date()
+                  };
+                  
+                  console.log("📝 Test randevu verisi:", testAppointment);
+                  
+                  const appointmentsRef = collection(db, "appointments");
+                  const docRef = await addDoc(appointmentsRef, testAppointment);
+                  console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
+                  
+                  toast({
+                    title: "Başarılı",
+                    description: `Test randevu eklendi. ID: ${docRef.id}`,
+                  });
+                  
+                  // 2 saniye sonra raporları yenile
+                  setTimeout(() => {
+                    loadReportData();
+                  }, 2000);
+                  
+                } catch (error) {
+                  console.error("❌ Test randevu ekleme hatası:", error);
+                  toast({
+                    title: "Hata",
+                    description: "Test randevu eklenirken hata oluştu.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Test Randevu Ekle
             </Button>
             <Button 
               variant="outline" 
@@ -421,7 +512,7 @@ interface MonthlyTrend {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{reportData.completedAppointments}</span>
                     <Badge variant="secondary">
-                      %{Math.round((reportData.completedAppointments / reportData.totalAppointments) * 100)}
+                      %{reportData.totalAppointments > 0 ? Math.round((reportData.completedAppointments / reportData.totalAppointments) * 100) : 0}
                     </Badge>
                   </div>
                 </div>
@@ -445,7 +536,7 @@ interface MonthlyTrend {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{reportData.cancelledAppointments}</span>
                     <Badge variant="secondary">
-                      %{Math.round((reportData.cancelledAppointments / reportData.totalAppointments) * 100)}
+                      %{reportData.totalAppointments > 0 ? Math.round((reportData.cancelledAppointments / reportData.totalAppointments) * 100) : 0}
                     </Badge>
                   </div>
                 </div>

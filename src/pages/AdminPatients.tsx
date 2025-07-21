@@ -66,6 +66,7 @@ const AdminPatients = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [showPatientView, setShowPatientView] = useState(false);
+  const [showPatientEdit, setShowPatientEdit] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientForm, setPatientForm] = useState<PatientFormData>({
     name: "",
@@ -341,11 +342,93 @@ const AdminPatients = () => {
 
   // Hasta düzenleme
   const handleEditPatient = (patient: Patient) => {
-    toast({
-      title: "Düzenleme",
-      description: `${patient.name} hasta bilgileri düzenleniyor...`,
+    console.log("✏️ Hasta düzenleme başlatılıyor:", patient);
+    
+    // Seçili hastayı ayarla
+    setSelectedPatient(patient);
+    
+    // Form verilerini hasta bilgileri ile doldur
+    setPatientForm({
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      birthDate: patient.birthDate || "",
+      gender: patient.gender || "",
+      bloodType: patient.bloodType || "",
+      password: "" // Şifre düzenlenemez
     });
-    // Burada hasta düzenleme modalı açılabilir
+    
+    // Düzenleme modalını aç
+    setShowPatientEdit(true);
+  };
+
+  // Hasta güncelleme
+  const handleUpdatePatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedPatient) {
+      toast({
+        title: "Hata",
+        description: "Düzenlenecek hasta seçilmedi.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      console.log("🔄 Hasta güncelleniyor:", selectedPatient.id);
+      console.log("📝 Güncellenecek veriler:", patientForm);
+      
+      // Firestore'da hasta bilgilerini güncelle
+      const patientRef = doc(db, "users", selectedPatient.id);
+      await updateDoc(patientRef, {
+        name: patientForm.name,
+        email: patientForm.email,
+        phone: patientForm.phone,
+        birthDate: patientForm.birthDate,
+        gender: patientForm.gender,
+        bloodType: patientForm.bloodType,
+        updatedAt: new Date(),
+        updatedBy: user?.email || "admin"
+      });
+      
+      console.log("✅ Hasta başarıyla güncellendi");
+      
+      // Formu sıfırla
+      setPatientForm({
+        name: "",
+        email: "",
+        phone: "",
+        birthDate: "",
+        gender: "",
+        bloodType: "",
+        password: ""
+      });
+      
+      // Modalı kapat
+      setShowPatientEdit(false);
+      setSelectedPatient(null);
+      
+      // Hasta listesini yenile
+      await loadPatients();
+      
+      toast({
+        title: "Başarılı",
+        description: `${patientForm.name} hasta bilgileri başarıyla güncellendi.`,
+      });
+      
+    } catch (error) {
+      console.error("❌ Hasta güncelleme hatası:", error);
+      toast({
+        title: "Hata",
+        description: "Hasta güncellenirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Hasta silme
@@ -917,6 +1000,162 @@ Kayıt Tarihi: ${selectedPatient.createdAt ? (selectedPatient.createdAt?.toDate?
                   </div>
                 </div>
               </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Hasta Düzenleme Modalı */}
+        <Dialog open={showPatientEdit} onOpenChange={setShowPatientEdit}>
+          <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Hasta Düzenle</DialogTitle>
+              <DialogDescription>
+                {selectedPatient?.name} hasta bilgilerini düzenleyin
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedPatient && (
+              <form onSubmit={handleUpdatePatient} className="space-y-4">
+                {/* Mevcut Bilgiler */}
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Mevcut Bilgiler</h4>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p><strong>ID:</strong> {selectedPatient.id}</p>
+                    <p><strong>Durum:</strong> {getStatusText(selectedPatient.status)}</p>
+                    <p><strong>Kayıt Tarihi:</strong> {selectedPatient.createdAt ? (selectedPatient.createdAt?.toDate?.() || new Date(selectedPatient.createdAt)).toLocaleDateString('tr-TR') : "Belirtilmemiş"}</p>
+                  </div>
+                </div>
+
+                {/* Uyarı */}
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ <strong>Dikkat:</strong> Şifre güvenlik nedeniyle düzenlenemez. Şifre değişikliği için hasta ile iletişime geçin.
+                  </p>
+                </div>
+
+                {/* Form Alanları */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-name">Ad Soyad *</Label>
+                    <Input
+                      id="edit-name"
+                      value={patientForm.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-email">E-posta *</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={patientForm.email}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-phone">Telefon *</Label>
+                    <Input
+                      id="edit-phone"
+                      value={patientForm.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-birthDate">Doğum Tarihi</Label>
+                    <Input
+                      id="edit-birthDate"
+                      type="date"
+                      value={patientForm.birthDate}
+                      onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-gender">Cinsiyet</Label>
+                    <Select value={patientForm.gender} onValueChange={(value) => handleInputChange("gender", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Cinsiyet seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Erkek">Erkek</SelectItem>
+                        <SelectItem value="Kadın">Kadın</SelectItem>
+                        <SelectItem value="Diğer">Diğer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-bloodType">Kan Grubu</Label>
+                    <Select value={patientForm.bloodType} onValueChange={(value) => handleInputChange("bloodType", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kan grubu seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A+">A+</SelectItem>
+                        <SelectItem value="A-">A-</SelectItem>
+                        <SelectItem value="B+">B+</SelectItem>
+                        <SelectItem value="B-">B-</SelectItem>
+                        <SelectItem value="AB+">AB+</SelectItem>
+                        <SelectItem value="AB-">AB-</SelectItem>
+                        <SelectItem value="0+">0+</SelectItem>
+                        <SelectItem value="0-">0-</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPatientEdit(false);
+                      setSelectedPatient(null);
+                      setPatientForm({
+                        name: "",
+                        email: "",
+                        phone: "",
+                        birthDate: "",
+                        gender: "",
+                        bloodType: "",
+                        password: ""
+                      });
+                    }}
+                    className="flex-1"
+                  >
+                    İptal
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (selectedPatient) {
+                        setPatientForm({
+                          name: selectedPatient.name,
+                          email: selectedPatient.email,
+                          phone: selectedPatient.phone,
+                          birthDate: selectedPatient.birthDate || "",
+                          gender: selectedPatient.gender || "",
+                          bloodType: selectedPatient.bloodType || "",
+                          password: ""
+                        });
+                      }
+                    }}
+                    className="flex-1"
+                  >
+                    Sıfırla
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading ? "Güncelleniyor..." : "Güncelle"}
+                  </Button>
+                </div>
+              </form>
             )}
           </DialogContent>
         </Dialog>

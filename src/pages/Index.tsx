@@ -5,7 +5,33 @@ import { RoleCard } from "@/components/RoleCard";
 import { PatientCard } from "@/components/PatientCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserCheck, Stethoscope, Shield, Calendar, Users, Activity, Bell, FileText, LogIn, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  UserCheck, 
+  Stethoscope, 
+  Shield, 
+  Calendar, 
+  Users, 
+  Activity, 
+  Bell, 
+  FileText, 
+  LogIn, 
+  UserPlus,
+  CheckCircle,
+  ArrowRight,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  X,
+  BarChart3,
+  Settings,
+  UserPlus as UserPlusIcon,
+  FileText as FileTextIcon,
+  Pill,
+  Eye
+} from "lucide-react";
 import medicalHero from "@/assets/medical-hero.jpg";
 import { getRedirectUrlByRole } from "@/services/userService";
 
@@ -14,6 +40,8 @@ type UserRole = "admin" | "doctor" | "patient" | null;
 const Index = () => {
   const { user, userProfile, loading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const [showDemo, setShowDemo] = useState(false);
+  const [demoRole, setDemoRole] = useState<UserRole>(null);
   const navigate = useNavigate();
 
   // Giriş yapmış kullanıcıyı doğru panele yönlendir
@@ -23,6 +51,16 @@ const Index = () => {
       navigate(redirectUrl);
     }
   }, [user, userProfile, loading, navigate]);
+
+  const handleDemo = (role: UserRole) => {
+    setDemoRole(role);
+    setShowDemo(true);
+  };
+
+  const closeDemo = () => {
+    setShowDemo(false);
+    setDemoRole(null);
+  };
 
   // Giriş yapmamış kullanıcılar için ana sayfa içeriği
   if (user && !userProfile && !loading) {
@@ -41,154 +79,161 @@ const Index = () => {
 
   if (selectedRole === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Navigation */}
+        <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-3">
+                <Stethoscope className="h-8 w-8 text-blue-600" />
+                <span className="text-xl font-bold text-gray-900">Klinik Takip</span>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={() => navigate("/login")}>
+                  Giriş Yap
+                </Button>
+                <Button onClick={() => navigate("/register")}>
+                  Kayıt Ol
+                </Button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
         {/* Hero Section */}
         <div className="relative overflow-hidden">
           <div 
-            className="absolute inset-0 bg-cover bg-center opacity-10"
+            className="absolute inset-0 bg-cover bg-center opacity-20"
             style={{ backgroundImage: `url(${medicalHero})` }}
           />
           <div className="relative container mx-auto px-4 py-24">
             <div className="text-center mb-16">
-              <h1 className="text-5xl font-bold mb-6 bg-gradient-medical bg-clip-text text-transparent">
-                Klinik Takip Sistemi
+              <Badge className="mb-4 bg-blue-100 text-blue-800 hover:bg-blue-200">
+                🏥 Modern Sağlık Teknolojisi
+              </Badge>
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
+                Klinik Takip
+                <span className="block text-blue-600">Sistemi</span>
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Modern sağlık hizmetleri için kapsamlı hasta ve randevu yönetim sistemi. 
-                Doktorlar, hastalar ve yöneticiler için özel olarak tasarlanmış paneller.
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                Doktorlar, hastalar ve yöneticiler için özel olarak tasarlanmış kapsamlı sağlık yönetim platformu. 
+                Randevu takibi, hasta kayıtları ve raporlama işlemlerinizi kolaylaştırın.
               </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  onClick={() => navigate("/register")}
+                  size="lg"
+                  className="px-8 py-4 text-lg"
+                >
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Hemen Başlayın
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate("/login")}
+                  size="lg"
+                  className="px-8 py-4 text-lg"
+                >
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Giriş Yapın
+                </Button>
+              </div>
             </div>
 
             {/* Features Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">Randevu Yönetimi</h3>
-                <p className="text-sm text-muted-foreground">Akıllı randevu planlama ve takip</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-accent" />
-                </div>
-                <h3 className="font-semibold mb-2">Hasta Takibi</h3>
-                <p className="text-sm text-muted-foreground">Detaylı hasta kayıtları ve geçmiş</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Activity className="w-8 h-8 text-success" />
-                </div>
-                <h3 className="font-semibold mb-2">Raporlama</h3>
-                <p className="text-sm text-muted-foreground">Kapsamlı analiz ve raporlar</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bell className="w-8 h-8 text-warning" />
-                </div>
-                <h3 className="font-semibold mb-2">Bildirimler</h3>
-                <p className="text-sm text-muted-foreground">Otomatik hatırlatmalar</p>
-              </div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                    <Calendar className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3">Akıllı Randevu Yönetimi</h3>
+                  <p className="text-gray-600 mb-4">
+                    Doktor ve hasta uygunluklarına göre otomatik randevu planlama, 
+                    hatırlatmalar ve takip sistemi.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Online randevu alma
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Otomatik hatırlatmalar
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Takvim entegrasyonu
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Authentication Buttons */}
-            <div className="text-center mb-8">
-              <div className="flex justify-center space-x-4 mb-6">
-                <Button 
-                  onClick={() => navigate("/login")}
-                  className="px-8 py-3"
-                  size="lg"
-                >
-                  <LogIn className="w-5 h-5 mr-2" />
-                  Giriş Yap
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate("/register")}
-                  className="px-8 py-3"
-                  size="lg"
-                >
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Kayıt Ol
-                </Button>
-                <Button 
-                  variant="secondary"
-                  onClick={() => navigate("/firebase-test")}
-                  className="px-6 py-3"
-                  size="lg"
-                >
-                  🔧 Firebase Test
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate("/simple-test")}
-                  className="px-8 py-3"
-                  size="lg"
-                >
-                  🧪 Basit Test
-                </Button>
-                <Button 
-                  variant="secondary"
-                  onClick={() => window.open("https://console.firebase.google.com/project/kliniktakip-95901/firestore/rules", "_blank")}
-                  className="px-8 py-3"
-                  size="lg"
-                >
-                  🔧 Firebase Kuralları
-                </Button>
-              </div>
-              <p className="text-muted-foreground">Hesabınızla giriş yapın veya yeni hesap oluşturun</p>
-              
-              {/* Test Links */}
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-2">🔧 Test Linkleri</h3>
-                <div className="flex flex-wrap gap-2 text-sm">
-                  <a 
-                    href="/login" 
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Login Sayfası
-                  </a>
-                  <span className="text-blue-400">|</span>
-                  <a 
-                    href="/register" 
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Kayıt Sayfası
-                  </a>
-                  <span className="text-blue-400">|</span>
-                  <a 
-                    href="/firebase-test" 
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Firebase Test
-                  </a>
-                  <span className="text-blue-400">|</span>
-                  <a 
-                    href="/login-debug" 
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Login Debug
-                  </a>
-                  <span className="text-blue-400">|</span>
-                  <a 
-                    href="/profile-debug" 
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Profil Debug
-                  </a>
-                </div>
-              </div>
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                    <Users className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3">Kapsamlı Hasta Takibi</h3>
+                  <p className="text-gray-600 mb-4">
+                    Hasta geçmişi, reçeteler, test sonuçları ve tedavi planları 
+                    tek bir platformda.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Dijital hasta dosyası
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Reçete yönetimi
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Test sonuçları
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+                    <Activity className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3">Gelişmiş Raporlama</h3>
+                  <p className="text-gray-600 mb-4">
+                    Detaylı analizler, performans raporları ve istatistikler 
+                    ile klinik verimliliğinizi artırın.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Gerçek zamanlı istatistikler
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Performans analizleri
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Özelleştirilebilir raporlar
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Role Selection */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-semibold mb-4">Demo Paneller</h2>
-              <p className="text-muted-foreground">Sistem özelliklerini keşfetmek için demo panelleri kullanın</p>
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4 text-gray-900">Kullanıcı Panelleri</h2>
+              <p className="text-gray-600 mb-8">Her kullanıcı tipi için özel olarak tasarlanmış paneller</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               <RoleCard
-                title="Admin"
+                title="Admin Paneli"
                 description="Sistem yönetimi ve genel kontrolör"
                 icon={Shield}
                 features={[
@@ -198,51 +243,474 @@ const Index = () => {
                   "Klinik konfigürasyonu"
                 ]}
                 onSelect={() => setSelectedRole("admin")}
-                gradient="bg-gradient-to-br from-primary to-primary-hover"
+                gradient="bg-gradient-to-br from-red-500 to-red-600"
               />
-              
               <RoleCard
-                title="Doktor"
-                description="Hasta muayenesi ve tedavi yönetimi"
+                title="Doktor Paneli"
+                description="Hasta takibi ve randevu yönetimi"
                 icon={Stethoscope}
                 features={[
-                  "Hasta kayıtları",
+                  "Hasta listesi",
                   "Randevu yönetimi",
                   "Reçete yazma",
-                  "Tedavi planları"
+                  "Hasta geçmişi"
                 ]}
                 onSelect={() => setSelectedRole("doctor")}
-                gradient="bg-gradient-to-br from-accent to-accent-hover"
+                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
-              
               <RoleCard
-                title="Hasta"
-                description="Kişisel sağlık takibi ve randevular"
+                title="Hasta Paneli"
+                description="Kişisel sağlık bilgileri ve randevular"
                 icon={UserCheck}
                 features={[
                   "Randevu alma",
                   "Reçete görüntüleme",
                   "Test sonuçları",
-                  "Doktor notları"
+                  "Profil yönetimi"
                 ]}
                 onSelect={() => setSelectedRole("patient")}
-                gradient="bg-gradient-to-br from-success to-success/80"
+                gradient="bg-gradient-to-br from-green-500 to-green-600"
               />
+            </div>
+
+            {/* Demo Buttons */}
+            <div className="text-center mt-12">
+              <h3 className="text-2xl font-bold mb-4 text-gray-900">Demo Panelleri</h3>
+              <p className="text-gray-600 mb-8">Sistemi test etmeden önce demo panellerini inceleyin</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDemo("admin")}
+                  className="px-6 py-3"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin Demo
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDemo("doctor")}
+                  className="px-6 py-3"
+                >
+                  <Stethoscope className="w-4 h-4 mr-2" />
+                  Doktor Demo
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDemo("patient")}
+                  className="px-6 py-3"
+                >
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Hasta Demo
+                </Button>
+              </div>
+            </div>
+
+            {/* Contact Section */}
+            <div className="mt-20 text-center">
+              <h2 className="text-2xl font-bold mb-8 text-gray-900">İletişim</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                <div className="flex items-center justify-center space-x-3">
+                  <Phone className="w-5 h-5 text-blue-600" />
+                  <span className="text-gray-600">0543 447 6245</span>
+                </div>
+                <div className="flex items-center justify-center space-x-3">
+                  <Mail className="w-5 h-5 text-blue-600" />
+                  <span className="text-gray-600">info@tiryakiyazilim.com</span>
+                </div>
+                <div className="flex items-center justify-center space-x-3">
+                  <MapPin className="w-5 h-5 text-blue-600" />
+                  <span className="text-gray-600">İstanbul, Türkiye</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Demo Modal */}
+        <Dialog open={showDemo} onOpenChange={setShowDemo}>
+          <DialogContent className="sm:max-w-[90vw] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                {demoRole === "admin" ? <Shield className="h-5 w-5" /> :
+                 demoRole === "doctor" ? <Stethoscope className="h-5 w-5" /> :
+                 <UserCheck className="h-5 w-5" />}
+                <span>
+                  {demoRole === "admin" ? "Admin Paneli" :
+                   demoRole === "doctor" ? "Doktor Paneli" :
+                   "Hasta Paneli"} Demo
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                {demoRole === "admin" ? "Sistem yönetimi ve genel kontrolör paneli" :
+                 demoRole === "doctor" ? "Hasta takibi ve randevu yönetimi paneli" :
+                 "Kişisel sağlık bilgileri ve randevular paneli"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {demoRole && (
+              <div className="space-y-6">
+                {/* Header Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {demoRole === "admin" && (
+                    <>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-8 w-8 text-blue-600" />
+                            <div>
+                              <p className="text-2xl font-bold">1,247</p>
+                              <p className="text-sm text-gray-500">Toplam Hasta</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Stethoscope className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="text-2xl font-bold">12</p>
+                              <p className="text-sm text-gray-500">Aktif Doktor</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-8 w-8 text-purple-600" />
+                            <div>
+                              <p className="text-2xl font-bold">573</p>
+                              <p className="text-sm text-gray-500">Bu Ay Randevu</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <BarChart3 className="h-8 w-8 text-orange-600" />
+                            <div>
+                              <p className="text-2xl font-bold">₺45,231</p>
+                              <p className="text-sm text-gray-500">Aylık Gelir</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                  
+                  {demoRole === "doctor" && (
+                    <>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-8 w-8 text-blue-600" />
+                            <div>
+                              <p className="text-2xl font-bold">8</p>
+                              <p className="text-sm text-gray-500">Bugün Randevu</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="text-2xl font-bold">32</p>
+                              <p className="text-sm text-gray-500">Bu Hafta Hasta</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <FileTextIcon className="h-8 w-8 text-purple-600" />
+                            <div>
+                              <p className="text-2xl font-bold">5</p>
+                              <p className="text-sm text-gray-500">Bekleyen Rapor</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Pill className="h-8 w-8 text-orange-600" />
+                            <div>
+                              <p className="text-2xl font-bold">12</p>
+                              <p className="text-sm text-gray-500">Aktif Reçete</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                  
+                  {demoRole === "patient" && (
+                    <>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-8 w-8 text-blue-600" />
+                            <div>
+                              <p className="text-2xl font-bold">25 Ara</p>
+                              <p className="text-sm text-gray-500">Sonraki Randevu</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Pill className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="text-2xl font-bold">2</p>
+                              <p className="text-sm text-gray-500">Aktif Reçete</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <FileTextIcon className="h-8 w-8 text-purple-600" />
+                            <div>
+                              <p className="text-2xl font-bold">Normal</p>
+                              <p className="text-sm text-gray-500">Test Sonucu</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Bell className="h-8 w-8 text-orange-600" />
+                            <div>
+                              <p className="text-2xl font-bold">3</p>
+                              <p className="text-sm text-gray-500">Yeni Bildirim</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </div>
+
+                {/* Main Content */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Activity */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Activity className="h-5 w-5" />
+                        <span>Son Aktiviteler</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {demoRole === "admin" && (
+                          <>
+                            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                              <UserPlusIcon className="h-4 w-4 text-blue-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Yeni hasta kaydı</p>
+                                <p className="text-xs text-gray-500">2 saat önce</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Dr. Özkan randevu oluşturdu</p>
+                                <p className="text-xs text-gray-500">10 dakika önce</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
+                              <FileTextIcon className="h-4 w-4 text-purple-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Reçete oluşturuldu</p>
+                                <p className="text-xs text-gray-500">1 saat önce</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        
+                        {demoRole === "doctor" && (
+                          <>
+                            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                              <Users className="h-4 w-4 text-blue-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Ayşe Yılmaz randevusu</p>
+                                <p className="text-xs text-gray-500">14:30 - Bugün</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                              <FileTextIcon className="h-4 w-4 text-green-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Reçete yazıldı</p>
+                                <p className="text-xs text-gray-500">Mehmet Kaya için</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
+                              <Pill className="h-4 w-4 text-purple-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Test sonucu hazır</p>
+                                <p className="text-xs text-gray-500">Fatma Öz - Kan tahlili</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        
+                        {demoRole === "patient" && (
+                          <>
+                            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Randevu onaylandı</p>
+                                <p className="text-xs text-gray-500">Dr. Özkan - 25 Ara 14:30</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                              <Pill className="h-4 w-4 text-green-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Yeni reçete</p>
+                                <p className="text-xs text-gray-500">Aspirin 100mg - Dr. Özkan</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
+                              <FileTextIcon className="h-4 w-4 text-purple-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">Test sonucu hazır</p>
+                                <p className="text-xs text-gray-500">Kan tahlili - Normal</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Quick Actions */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Settings className="h-5 w-5" />
+                        <span>Hızlı İşlemler</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-3">
+                        {demoRole === "admin" && (
+                          <>
+                            <Button variant="outline" className="h-12">
+                              <Users className="h-4 w-4 mr-2" />
+                              Hasta Yönetimi
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <Stethoscope className="h-4 w-4 mr-2" />
+                              Doktor Yönetimi
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Raporlar
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <Settings className="h-4 w-4 mr-2" />
+                              Sistem Ayarları
+                            </Button>
+                          </>
+                        )}
+                        
+                        {demoRole === "doctor" && (
+                          <>
+                            <Button variant="outline" className="h-12">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Randevularım
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <Users className="h-4 w-4 mr-2" />
+                              Hastalarım
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <Pill className="h-4 w-4 mr-2" />
+                              Reçetelerim
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <FileTextIcon className="h-4 w-4 mr-2" />
+                              Raporlarım
+                            </Button>
+                          </>
+                        )}
+                        
+                        {demoRole === "patient" && (
+                          <>
+                            <Button variant="outline" className="h-12">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Randevularım
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <Pill className="h-4 w-4 mr-2" />
+                              Reçetelerim
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <FileTextIcon className="h-4 w-4 mr-2" />
+                              Test Sonuçları
+                            </Button>
+                            <Button variant="outline" className="h-12">
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Profilim
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Demo Info */}
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Eye className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">Demo Modu</p>
+                        <p className="text-xs text-blue-700">
+                          Bu bir demo görünümüdür. Gerçek sistemi denemek için giriş yapın.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button variant="outline" onClick={closeDemo}>
+                <X className="h-4 w-4 mr-2" />
+                Kapat
+              </Button>
+              <Button onClick={() => navigate("/register")}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Gerçek Hesap Oluştur
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
-  // Dashboard for selected role
+  // Role Selection for Login
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card shadow-soft">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-primary">Klinik Sistemi</h1>
+            <h1 className="text-2xl font-bold text-primary">Klinik Takip</h1>
             <span className="text-muted-foreground">|</span>
             <span className="capitalize font-medium">
               {selectedRole === "admin" ? "Admin" : 
@@ -253,299 +721,57 @@ const Index = () => {
             variant="outline" 
             onClick={() => setSelectedRole(null)}
           >
-            Çıkış Yap
+            Ana Sayfaya Dön
           </Button>
         </div>
       </header>
 
       {/* Dashboard Content */}
       <main className="container mx-auto px-4 py-8">
-        {selectedRole === "admin" && <AdminDashboard />}
-        {selectedRole === "doctor" && <DoctorDashboard />}
-        {selectedRole === "patient" && <PatientDashboard />}
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-4">
+            {selectedRole === "admin" ? "Admin Paneli" : 
+             selectedRole === "doctor" ? "Doktor Paneli" : "Hasta Paneli"}
+          </h2>
+          <p className="text-muted-foreground mb-8">
+            {selectedRole === "admin" ? "Sistem yönetimi ve genel kontrolör" : 
+             selectedRole === "doctor" ? "Hasta takibi ve randevu yönetimi" : 
+             "Kişisel sağlık bilgileri ve randevular"}
+          </p>
+          
+          <div className="max-w-md mx-auto">
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    {selectedRole === "admin" ? <Shield className="w-8 h-8 text-primary" /> :
+                     selectedRole === "doctor" ? <Stethoscope className="w-8 h-8 text-primary" /> :
+                     <UserCheck className="w-8 h-8 text-primary" />}
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    {selectedRole === "admin" ? "Admin Girişi" : 
+                     selectedRole === "doctor" ? "Doktor Girişi" : "Hasta Girişi"}
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    {selectedRole === "admin" ? "Sistem yönetimi için giriş yapın" : 
+                     selectedRole === "doctor" ? "Hasta takibi için giriş yapın" : 
+                     "Kişisel bilgileriniz için giriş yapın"}
+                  </p>
+                  <Button 
+                    onClick={() => navigate("/login")}
+                    className="w-full"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Giriş Yap
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
     </div>
   );
 };
-
-// Admin Dashboard Component
-function AdminDashboard() {
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Hasta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">1,247</div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% geçen aydan
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktif Doktor</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-accent">12</div>
-            <p className="text-xs text-muted-foreground">
-              +2 yeni doktor
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bu Ay Randevu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">573</div>
-            <p className="text-xs text-muted-foreground">
-              +12% artış
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Gelir</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">₺45,231</div>
-            <p className="text-xs text-muted-foreground">
-              +7% geçen aydan
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Son Kayıt Olan Hastalar
-            </CardTitle>
-            <CardDescription>Bu hafta sisteme katılan yeni hastalar</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { name: "Ayşe Yılmaz", date: "2 saat önce", phone: "0532-123-4567" },
-                { name: "Mehmet Kaya", date: "5 saat önce", phone: "0533-987-6543" },
-                { name: "Fatma Öz", date: "1 gün önce", phone: "0534-555-1234" }
-              ].map((patient, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{patient.name}</p>
-                    <p className="text-sm text-muted-foreground">{patient.phone}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{patient.date}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Sistem Aktivitesi
-            </CardTitle>
-            <CardDescription>Son kullanıcı aktiviteleri</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { action: "Dr. Özkan randevu oluşturdu", time: "10 dk önce" },
-                { action: "Yeni hasta kaydı", time: "25 dk önce" },
-                { action: "Reçete oluşturuldu", time: "1 saat önce" }
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <p className="text-sm">{activity.action}</p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-// Doctor Dashboard Component
-function DoctorDashboard() {
-  const patients = [
-    {
-      name: "Ayşe Yılmaz",
-      age: 34,
-      phone: "0532-123-4567",
-      lastVisit: "15 Aralık 2024",
-      nextAppointment: "22 Aralık 2024 14:30",
-      status: "active" as const,
-      urgency: "medium" as const
-    },
-    {
-      name: "Mehmet Kaya", 
-      age: 56,
-      phone: "0533-987-6543",
-      lastVisit: "10 Aralık 2024",
-      nextAppointment: "20 Aralık 2024 10:00",
-      status: "waiting" as const,
-      urgency: "high" as const
-    },
-    {
-      name: "Fatma Öz",
-      age: 42,
-      phone: "0534-555-1234", 
-      lastVisit: "18 Aralık 2024",
-      status: "completed" as const,
-      urgency: "low" as const
-    }
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bugün Randevular</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">8</div>
-            <p className="text-xs text-muted-foreground">3 hasta bekliyor</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bu Hafta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-accent">32</div>
-            <p className="text-xs text-muted-foreground">randevu tamamlandı</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bekleyen Raporlar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">5</div>
-            <p className="text-xs text-muted-foreground">rapor onay bekliyor</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Stethoscope className="w-5 h-5" />
-            Hastalarım
-          </CardTitle>
-          <CardDescription>Aktif hasta takip listesi</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {patients.map((patient, index) => (
-              <PatientCard key={index} {...patient} />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Patient Dashboard Component  
-function PatientDashboard() {
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Sonraki Randevu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-primary">25 Ara 14:30</div>
-            <p className="text-xs text-muted-foreground">Dr. Özkan ile</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktif Reçete</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-accent">2</div>
-            <p className="text-xs text-muted-foreground">ilaç kullanımında</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Test Sonuçları</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-success">Normal</div>
-            <p className="text-xs text-muted-foreground">son tahlil</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Yaklaşan Randevular
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { doctor: "Dr. Özkan", date: "25 Aralık 2024", time: "14:30", type: "Kontrol" },
-                { doctor: "Dr. Yıldız", date: "2 Ocak 2025", time: "10:00", type: "Tahlil" }
-              ].map((appointment, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-medium">{appointment.doctor}</p>
-                    <p className="text-sm text-muted-foreground">{appointment.type}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{appointment.date}</p>
-                    <p className="text-xs text-muted-foreground">{appointment.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Son Reçeteler
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { medicine: "Aspirin 100mg", dosage: "Günde 1 defa", doctor: "Dr. Özkan" },
-                { medicine: "Vitamin D3", dosage: "Haftada 1 defa", doctor: "Dr. Özkan" }
-              ].map((prescription, index) => (
-                <div key={index} className="p-3 bg-muted rounded-lg">
-                  <p className="font-medium">{prescription.medicine}</p>
-                  <p className="text-sm text-muted-foreground">{prescription.dosage}</p>
-                  <p className="text-xs text-muted-foreground">Yazan: {prescription.doctor}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
 
 export default Index;

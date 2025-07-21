@@ -17,6 +17,7 @@ interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   patientId: string;
+  patientName: string;
   onSuccess: () => void;
 }
 
@@ -27,7 +28,7 @@ interface Doctor {
   department: string;
 }
 
-const NewAppointmentModal = ({ isOpen, onClose, patientId, onSuccess }: NewAppointmentModalProps) => {
+const NewAppointmentModal = ({ isOpen, onClose, patientId, patientName, onSuccess }: NewAppointmentModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -61,30 +62,77 @@ const NewAppointmentModal = ({ isOpen, onClose, patientId, onSuccess }: NewAppoi
     setLoading(true);
 
     try {
-      const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
+      console.log("🔍 Form verilerini kontrol ediyorum...");
+      console.log("📝 Form verileri:", formData);
+      console.log("📅 Seçili tarih:", selectedDate);
+      console.log("👨‍⚕️ Doktorlar:", doctors);
+      console.log("👤 Patient ID:", patientId);
+      console.log("👤 Patient Name:", patientName);
       
-      if (!selectedDoctor || !selectedDate) {
+      const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
+      console.log("✅ Seçili doktor:", selectedDoctor);
+      
+      if (!selectedDoctor) {
+        console.error("❌ Doktor seçilmedi");
         toast({
           title: "Hata",
-          description: "Lütfen tüm alanları doldurun.",
+          description: "Lütfen bir doktor seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!selectedDate) {
+        console.error("❌ Tarih seçilmedi");
+        toast({
+          title: "Hata",
+          description: "Lütfen bir tarih seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!formData.time) {
+        console.error("❌ Saat seçilmedi");
+        toast({
+          title: "Hata",
+          description: "Lütfen bir saat seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!formData.type) {
+        console.error("❌ Randevu türü seçilmedi");
+        toast({
+          title: "Hata",
+          description: "Lütfen bir randevu türü seçin.",
           variant: "destructive",
         });
         return;
       }
 
+      console.log("📋 Randevu verisi hazırlanıyor...");
       const appointmentData = {
         patientId,
+        patientName: patientName || "Bilinmeyen Hasta",
         doctorId: formData.doctorId,
         doctor: selectedDoctor.name,
+        doctorName: selectedDoctor.name,
         date: format(selectedDate, "yyyy-MM-dd"),
         time: formData.time,
         type: formData.type,
-        location: formData.location,
-        notes: formData.notes,
+        location: formData.location || "",
+        notes: formData.notes || "",
         status: "upcoming" as const
       };
+      
+      console.log("📝 Oluşturulacak randevu verisi:", appointmentData);
 
+      console.log("💾 Firebase'e kaydediliyor...");
       await createAppointment(appointmentData);
+      
+      console.log("✅ Randevu başarıyla oluşturuldu");
       
       toast({
         title: "Başarılı",
@@ -102,11 +150,17 @@ const NewAppointmentModal = ({ isOpen, onClose, patientId, onSuccess }: NewAppoi
         notes: ""
       });
       setSelectedDate(undefined);
-    } catch (error) {
-      console.error("Randevu oluşturulamadı:", error);
+    } catch (error: any) {
+      console.error("❌ Randevu oluşturma hatası:", error);
+      console.error("🔍 Hata detayları:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
       toast({
         title: "Hata",
-        description: "Randevu oluşturulurken bir hata oluştu.",
+        description: `Randevu oluşturulurken hata oluştu: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -126,9 +180,56 @@ const NewAppointmentModal = ({ isOpen, onClose, patientId, onSuccess }: NewAppoi
           <DialogDescription>
             Yeni bir randevu oluşturmak için aşağıdaki bilgileri doldurun.
           </DialogDescription>
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>Hasta:</strong> {patientName}
+            </p>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Test Butonu */}
+          <div className="flex justify-end mb-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  console.log("🧪 Test randevu verisi hazırlanıyor...");
+                  
+                  // Test doktoru seç
+                  if (doctors.length > 0) {
+                    const testDoctor = doctors[0];
+                    setFormData({
+                      doctorId: testDoctor.id,
+                      date: "",
+                      time: "10:00",
+                      type: "Test Muayene",
+                      location: "Test Bölümü",
+                      notes: "Test randevu notu - " + new Date().toLocaleString()
+                    });
+                    setSelectedDate(new Date());
+                    
+                    toast({
+                      title: "Test Verisi",
+                      description: "Form test verileri ile dolduruldu.",
+                    });
+                  } else {
+                    toast({
+                      title: "Hata",
+                      description: "Önce doktorlar yüklenmeli.",
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  console.error("Test verisi hatası:", error);
+                }
+              }}
+            >
+              Test Verisi Doldur
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="doctor">Doktor</Label>

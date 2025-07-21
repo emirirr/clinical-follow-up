@@ -71,11 +71,31 @@ export const getAdminStats = async (): Promise<AdminStats> => {
       })
       .slice(0, 5);
     
-    // Randevu sayıları (şimdilik mock data - gerçek randevu collection'ı eklendiğinde güncellenecek)
-    const totalAppointments = 573;
-    const completedAppointments = 445;
-    const cancelledAppointments = 28;
-    const thisMonthAppointments = 45; // Bu ayki randevu sayısı
+    // Randevu verilerini Firebase'den çek
+    console.log("📅 Firebase'den randevu verileri çekiliyor...");
+    
+    const appointmentsRef = collection(db, "appointments");
+    const appointmentsSnapshot = await getDocs(appointmentsRef);
+    const appointments = appointmentsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    console.log("📊 Toplam randevu sayısı:", appointments.length);
+    
+    // Randevu istatistikleri
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter((appointment: any) => appointment.status === "completed").length;
+    const cancelledAppointments = appointments.filter((appointment: any) => appointment.status === "cancelled").length;
+    
+    // Bu ayki randevular
+    const thisMonthAppointments = appointments.filter((appointment: any) => {
+      const appointmentDate = new Date(appointment.date);
+      return appointmentDate.getMonth() === now.getMonth() && 
+             appointmentDate.getFullYear() === now.getFullYear();
+    }).length;
+    
+    console.log("📈 Bu ayki randevu sayısı:", thisMonthAppointments);
     
     // Büyüme oranları (hesaplanmış)
     const lastMonthPatients = Math.max(0, totalPatients - thisMonthPatients);
@@ -84,27 +104,30 @@ export const getAdminStats = async (): Promise<AdminStats> => {
     const lastMonthDoctors = Math.max(0, totalDoctors - thisMonthDoctors);
     const doctorGrowth = lastMonthDoctors > 0 ? ((thisMonthDoctors / lastMonthDoctors) * 100) : 0;
     
-    const monthlyGrowth = 12.5; // Randevu büyüme oranı (şimdilik mock)
+    // Randevu büyüme oranı
+    const lastMonthAppointments = Math.max(0, totalAppointments - thisMonthAppointments);
+    const monthlyGrowth = lastMonthAppointments > 0 ? ((thisMonthAppointments / lastMonthAppointments) * 100) : 0;
     
-    // Son randevular (mock data)
-    const recentAppointments = [
-      {
-        id: "1",
-        patientName: "Ahmet Yılmaz",
-        doctorName: "Dr. Ayşe Yılmaz",
-        date: "2024-01-15",
-        time: "09:00",
-        status: "upcoming"
-      },
-      {
-        id: "2",
-        patientName: "Fatma Demir",
-        doctorName: "Dr. Mehmet Demir",
-        date: "2024-01-16",
-        time: "14:30",
-        status: "upcoming"
-      }
-    ];
+    // Son randevular (Firebase'den)
+    const recentAppointments = appointments
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 5)
+      .map((appointment: any) => ({
+        id: appointment.id,
+        patientName: appointment.patientName || "Bilinmeyen Hasta",
+        doctorName: appointment.doctorName || "Bilinmeyen Doktor",
+        date: appointment.date,
+        time: appointment.time || "00:00",
+        status: appointment.status || "upcoming",
+        type: appointment.type || "Muayene",
+        location: appointment.location || "Belirtilmemiş"
+      }));
+    
+    console.log("📋 Son randevular:", recentAppointments);
     
     return {
       totalPatients,

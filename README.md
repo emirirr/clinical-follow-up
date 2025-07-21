@@ -1,6 +1,8 @@
-# Welcome to your Lovable project
+# Klinik Takip
 
-## Project info
+## Proje Bilgisi
+
+**Klinik Takip Sistemi** - Hasta ve Doktor Yönetim Platformu
 
 **URL**: https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4
 
@@ -50,19 +52,42 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+## Kullanılan Teknolojiler
 
-This project is built with:
+Bu proje şu teknolojilerle geliştirilmiştir:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Hızlı geliştirme ortamı
+- **TypeScript** - Tip güvenli JavaScript
+- **React** - Kullanıcı arayüzü kütüphanesi
+- **shadcn-ui** - Modern UI bileşenleri
+- **Tailwind CSS** - Utility-first CSS framework
+- **Firebase** - Backend servisleri (Auth, Firestore, Storage)
 
-## How can I deploy this project?
+## Projeyi Nasıl Çalıştırırım?
 
-Simply open [Lovable](https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4) and click on Share -> Publish.
+### Geliştirme Sunucusu
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# Geliştirme sunucusunu başlat
+npm run dev
+```
+
+### Production Build
+
+```bash
+# Production build oluştur
+npm run build
+
+# Preview sunucusunu başlat
+npm run preview
+```
+
+## Deployment
+
+Lovable platformunda projeyi yayınlamak için [Lovable](https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4) adresine gidin ve Share -> Publish'e tıklayın.
 
 ## Can I connect a custom domain to my Lovable project?
 

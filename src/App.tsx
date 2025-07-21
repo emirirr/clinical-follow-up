@@ -22,6 +22,11 @@ import AdminDoctors from "./pages/AdminDoctors";
 import AdminAppointments from "./pages/AdminAppointments";
 import AdminReports from "./pages/AdminReports";
 import AdminSettings from "./pages/AdminSettings";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorAppointments from "./pages/DoctorAppointments";
+import DoctorPatients from "./pages/DoctorPatients";
+import DoctorPrescriptions from "./pages/DoctorPrescriptions";
+import DoctorProfile from "./pages/DoctorProfile";
 import FirebaseTest from "./pages/FirebaseTest";
 import SimpleTest from "./pages/SimpleTest";
 import LoginDebug from "./pages/LoginDebug";
@@ -163,6 +168,49 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
+              
+              {/* Doctor Routes */}
+              <Route 
+                path="/doctor" 
+                element={
+                  <ProtectedRoute>
+                    <DoctorDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/doctor/appointments" 
+                element={
+                  <ProtectedRoute>
+                    <DoctorAppointments />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/doctor/patients" 
+                element={
+                  <ProtectedRoute>
+                    <DoctorPatients />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/doctor/prescriptions" 
+                element={
+                  <ProtectedRoute>
+                    <DoctorPrescriptions />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/doctor/profile" 
+                element={
+                  <ProtectedRoute>
+                    <DoctorProfile />
+                  </ProtectedRoute>
+                } 
+              />
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

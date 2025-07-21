@@ -524,36 +524,50 @@ const AdminAppointments = () => {
               onClick={async () => {
                 // Test randevu ekle
                 try {
-                  console.log("Test randevu ekleniyor...");
+                  console.log("🧪 Test randevu ekleniyor...");
+                  
                   const testAppointment = {
-                    patientId: "test-patient",
+                    patientId: "test-patient-" + Date.now(),
                     patientName: "Test Hasta " + new Date().getTime(),
-                    doctorId: "test-doctor",
+                    doctorId: "test-doctor-" + Date.now(),
                     doctorName: "Dr. Test " + new Date().getTime(),
                     date: new Date().toISOString().split('T')[0],
                     time: "10:00",
                     type: "Test Muayene",
                     location: "Test Bölümü",
-                    notes: "Test randevu notu",
+                    notes: "Test randevu notu - " + new Date().toLocaleString(),
                     status: "upcoming",
                     createdAt: new Date()
                   };
                   
-                  console.log("Test randevu verisi:", testAppointment);
-                  const docRef = await addDoc(collection(db, "appointments"), testAppointment);
-                  console.log("Test randevu eklendi, doc ID:", docRef.id);
+                  console.log("📝 Test randevu verisi:", testAppointment);
+                  console.log("📊 Firebase db objesi:", db);
+                  
+                  const appointmentsRef = collection(db, "appointments");
+                  console.log("📋 Appointments referansı:", appointmentsRef);
+                  
+                  console.log("⏳ Doküman ekleniyor...");
+                  const docRef = await addDoc(appointmentsRef, testAppointment);
+                  console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
                   
                   toast({
                     title: "Başarılı",
-                    description: "Test randevu eklendi.",
+                    description: `Test randevu eklendi. ID: ${docRef.id}`,
                   });
                   
+                  console.log("🔄 2 saniye sonra randevular yenilenecek...");
                   setTimeout(() => {
+                    console.log("🔄 Randevular yenileniyor...");
                     loadAppointments();
-                  }, 1000);
+                  }, 2000);
                   
                 } catch (error) {
-                  console.error("Test randevu ekleme hatası:", error);
+                  console.error("❌ Test randevu ekleme hatası:", error);
+                  console.error("🔍 Hata detayları:", {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                  });
                   toast({
                     title: "Hata",
                     description: "Test randevu eklenirken hata oluştu.",
@@ -828,12 +842,33 @@ const AdminAppointments = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Randevu Bulunamadı
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 mb-4">
                     {searchTerm || filterStatus !== "all" 
                       ? "Arama kriterlerinize uygun randevu bulunamadı."
                       : "Henüz randevu kaydı bulunmuyor."
                     }
                   </p>
+                  {!searchTerm && filterStatus === "all" && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-500">
+                        Toplam randevu sayısı: {appointments.length}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Yüklenen randevu sayısı: {appointments.length}
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          console.log("🔍 Mevcut randevular:", appointments);
+                          console.log("🔍 Filtrelenmiş randevular:", filteredAppointments);
+                          console.log("🔍 Arama terimi:", searchTerm);
+                          console.log("🔍 Filtre durumu:", filterStatus);
+                        }}
+                      >
+                        Debug Bilgileri
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
