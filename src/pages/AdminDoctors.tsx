@@ -22,11 +22,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminNavbar from "@/components/AdminNavbar";
-import { collection, getDocs, query, where, orderBy, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { saveUserProfile, type UserRole } from "@/services/userService";
+import {
+  listAllUsers,
+  demoCreateUser,
+  demoUpdateUserDoc,
+  demoDeleteUserDoc,
+} from "@/services/adminService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,60 +75,32 @@ const AdminDoctors = () => {
     password: ""
   });
 
-  // Firebase'den doktor verilerini yükle
   const loadDoctors = async () => {
     try {
       setLoading(true);
-      
-      console.log("Firebase'den doktorlar yükleniyor...");
-      
-      // Firestore'dan doktor verilerini çek
-      const usersRef = collection(db, "users");
-      const allUsersQuery = query(usersRef);
-      const allUsersSnapshot = await getDocs(allUsersQuery);
-      
-      console.log("Toplam kullanıcı sayısı:", allUsersSnapshot.docs.length);
-      
-      // Sadece doktorları filtrele
-      const doctorsData: Doctor[] = allUsersSnapshot.docs
-        .filter(doc => {
-          const data = doc.data();
-          return data.role === "doctor";
-        })
-        .map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            userId: data.userId || doc.id,
-            name: data.name || "İsimsiz Doktor",
-            email: data.email || "",
-            phone: data.phone || "",
-            department: data.department || "",
-            specialty: data.specialty || "",
-            status: data.status || "active",
-            role: data.role || "doctor",
-            createdAt: data.createdAt || new Date(),
-            appointmentCount: data.appointmentCount || 0
-          };
-        });
-      
-      console.log("Filtrelenmiş doktor sayısı:", doctorsData.length);
-      console.log("Doktor verileri:", doctorsData);
-      
+      const all = listAllUsers();
+      const doctorsData: Doctor[] = all
+        .filter((u) => u.role === "doctor")
+        .map((u) => ({
+          id: u.id,
+          userId: u.userId,
+          name: u.name || "İsimsiz Doktor",
+          email: u.email || "",
+          phone: u.phone || "",
+          department: u.department || "",
+          specialty: u.specialty || "",
+          status: u.status || "active",
+          role: "doctor",
+          createdAt: u.createdAt || new Date(),
+          appointmentCount: 0,
+        }));
       setDoctors(doctorsData);
-      
       toast({
         title: "Başarılı",
-        description: `${doctorsData.length} doktor yüklendi.`,
+        description: `${doctorsData.length} doktor yüklendi (demo).`,
       });
-      
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Doktorlar yüklenirken hata:", error);
-      console.error("Hata detayları:", {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
       toast({
         title: "Hata",
         description: "Doktor verileri yüklenirken bir hata oluştu.",
@@ -149,33 +122,17 @@ const AdminDoctors = () => {
     
     try {
       setLoading(true);
-      
-      // Firebase Auth ile kullanıcı oluştur
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        doctorForm.email,
-        doctorForm.password
-      );
-      
-      // Firestore'a doktor profilini kaydet
-      const doctorData = {
-        userId: userCredential.user.uid,
+      demoCreateUser({
         name: doctorForm.name,
         email: doctorForm.email,
         phone: doctorForm.phone,
         department: doctorForm.department,
         specialty: doctorForm.specialty,
-        role: "doctor" as UserRole,
-        status: "active",
-        createdAt: new Date(),
-        appointmentCount: 0
-      };
-      
-      await addDoc(collection(db, "users"), doctorData);
-      
+        role: "doctor",
+      });
       toast({
         title: "Başarılı",
-        description: "Doktor başarıyla eklendi.",
+        description: "Doktor demo listesine eklendi.",
       });
       
       // Formu temizle ve modalı kapat
@@ -251,14 +208,12 @@ const AdminDoctors = () => {
     try {
       setLoading(true);
       
-      // Firestore'da doktor bilgilerini güncelle
-      await updateDoc(doc(db, "users", selectedDoctor.id), {
+      demoUpdateUserDoc(selectedDoctor.id, {
         name: doctorForm.name,
         email: doctorForm.email,
         phone: doctorForm.phone,
         department: doctorForm.department,
         specialty: doctorForm.specialty,
-        updatedAt: new Date()
       });
       
       toast({
@@ -302,8 +257,7 @@ const AdminDoctors = () => {
     try {
       setLoading(true);
       
-      // Firestore'dan doktor kaydını sil
-      await deleteDoc(doc(db, "users", doctorId));
+      demoDeleteUserDoc(doctorId);
       
       // Doktor listesini yenile
       await loadDoctors();
@@ -332,11 +286,7 @@ const AdminDoctors = () => {
     try {
       setLoading(true);
       
-      // Firestore'da doktor durumunu güncelle
-      await updateDoc(doc(db, "users", doctor.id), {
-        status: newStatus,
-        updatedAt: new Date()
-      });
+      demoUpdateUserDoc(doctor.id, { status: newStatus });
       
       // Doktor listesini yenile
       await loadDoctors();
@@ -420,38 +370,20 @@ const AdminDoctors = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Yenile
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={async () => {
-                // Test doktor ekle
                 try {
-                  console.log("Test doktor ekleniyor...");
-                  const testDoctor = {
-                    name: "Dr. Test " + new Date().getTime(),
-                    email: "test" + new Date().getTime() + "@klinik.com",
-                    phone: "+90 555-" + Math.floor(Math.random() * 10000),
+                  demoCreateUser({
+                    name: "Dr. Test " + Date.now(),
+                    email: `testdoc${Date.now()}@demo.local`,
+                    phone: "+90 555-0000",
                     department: "Test Bölümü",
                     specialty: "Test Uzmanı",
                     role: "doctor",
-                    status: "active",
-                    createdAt: new Date(),
-                    userId: "test-" + new Date().getTime(),
-                    appointmentCount: 0
-                  };
-                  
-                  console.log("Test doktor verisi:", testDoctor);
-                  const docRef = await addDoc(collection(db, "users"), testDoctor);
-                  console.log("Test doktor eklendi, doc ID:", docRef.id);
-                  
-                  toast({
-                    title: "Başarılı",
-                    description: "Test doktor eklendi.",
                   });
-                  
-                  setTimeout(() => {
-                    loadDoctors();
-                  }, 1000);
-                  
+                  toast({ title: "Başarılı", description: "Test doktor eklendi." });
+                  await loadDoctors();
                 } catch (error) {
                   console.error("Test doktor ekleme hatası:", error);
                   toast({

@@ -32,7 +32,6 @@ import SimpleTest from "./pages/SimpleTest";
 import LoginDebug from "./pages/LoginDebug";
 import ProfileDebug from "./pages/ProfileDebug";
 import NotFound from "./pages/NotFound";
-import "./lib/firebase"; // Firebase'i başlat
 
 const queryClient = new QueryClient();
 

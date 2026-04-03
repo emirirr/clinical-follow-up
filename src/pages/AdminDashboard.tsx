@@ -21,11 +21,9 @@ import {
   Bell
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { saveUserProfile, type UserRole } from "@/services/userService";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import AdminNavbar from "@/components/AdminNavbar";
-import { getAdminStats, type AdminStats } from "@/services/adminService";
+import { getAdminStats, demoCreateUser, demoAddAppointment, type AdminStats } from "@/services/adminService";
+import { DEMO_PATIENT_DOC_ID, DEMO_DOCTOR_DOC_ID } from "@/lib/demo-store";
 
 interface DoctorFormData {
   name: string;
@@ -128,30 +126,18 @@ const AdminDashboard = () => {
     setLoading(true);
 
     try {
-      // Doktor hesabını oluştur
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        doctorForm.email, 
-        doctorForm.password
-      );
-
-      // Doktor profilini kaydet
-      const doctorProfile = {
-        userId: userCredential.user.uid,
+      demoCreateUser({
         email: doctorForm.email,
-        role: "doctor" as UserRole,
         name: doctorForm.name,
         phone: doctorForm.phone,
+        role: "doctor",
         department: doctorForm.department,
         specialty: doctorForm.specialty,
-        status: "active" as const
-      };
-
-      await saveUserProfile(doctorProfile);
+      });
 
       toast({
         title: "Başarılı",
-        description: `Dr. ${doctorForm.name} hesabı başarıyla oluşturuldu. Email: ${doctorForm.email}`,
+        description: `Dr. ${doctorForm.name} demo kaydı oluşturuldu. Email: ${doctorForm.email}`,
       });
 
       // İstatistikleri yenile
@@ -169,26 +155,12 @@ const AdminDashboard = () => {
       });
       setShowDoctorForm(false);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Doktor kayıt hatası:", error);
-      
-      let errorMessage = "Doktor kaydı oluşturulurken hata oluştu.";
-      
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Bu email adresi zaten kullanımda. Lütfen farklı bir email adresi kullanın.";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Geçersiz email adresi. Lütfen doğru bir email adresi girin.";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Şifre çok zayıf. Lütfen en az 6 karakterli güçlü bir şifre seçin.";
-      } else if (error.code === "auth/network-request-failed") {
-        errorMessage = "Ağ bağlantısı sorunu. Lütfen internet bağlantınızı kontrol edin.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+      const message = error instanceof Error ? error.message : "Doktor kaydı oluşturulurken hata oluştu.";
       toast({
         title: "Hata",
-        description: errorMessage,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -434,43 +406,26 @@ const AdminDashboard = () => {
                   size="sm"
                   onClick={async () => {
                     try {
-                      console.log("🧪 Test randevu ekleniyor...");
-                      
-                      const testAppointment = {
-                        patientId: "test-patient-" + Date.now(),
-                        patientName: "Test Hasta " + new Date().getTime(),
-                        doctorId: "test-doctor-" + Date.now(),
-                        doctorName: "Dr. Test " + new Date().getTime(),
-                        date: new Date().toISOString().split('T')[0], // Bugünün tarihi
+                      const id = demoAddAppointment({
+                        patientId: DEMO_PATIENT_DOC_ID,
+                        patientName: "Demo Test Hasta",
+                        doctorId: DEMO_DOCTOR_DOC_ID,
+                        doctor: "Dr. Mehmet Kaya",
+                        doctorName: "Dr. Mehmet Kaya",
+                        date: new Date().toISOString().split("T")[0],
                         time: "10:00",
                         type: "Test Muayene",
-                        location: "Test Bölümü",
-                        notes: "Test randevu notu - " + new Date().toLocaleString(),
+                        location: "Demo bölümü",
+                        notes: "Demo randevu — " + new Date().toLocaleString("tr-TR"),
                         status: "upcoming",
-                        createdAt: new Date()
-                      };
-                      
-                      console.log("📝 Test randevu verisi:", testAppointment);
-                      
-                      const { collection, addDoc } = await import("firebase/firestore");
-                      const { db } = await import("@/lib/firebase");
-                      
-                      const appointmentsRef = collection(db, "appointments");
-                      const docRef = await addDoc(appointmentsRef, testAppointment);
-                      console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
-                      
+                      });
                       toast({
                         title: "Başarılı",
-                        description: `Test randevu eklendi. ID: ${docRef.id}`,
+                        description: `Demo randevu eklendi. ID: ${id}`,
                       });
-                      
-                      // 2 saniye sonra istatistikleri yenile
-                      setTimeout(() => {
-                        loadStats();
-                      }, 2000);
-                      
+                      setTimeout(() => loadStats(), 300);
                     } catch (error) {
-                      console.error("❌ Test randevu ekleme hatası:", error);
+                      console.error("Test randevu ekleme hatası:", error);
                       toast({
                         title: "Hata",
                         description: "Test randevu eklenirken hata oluştu.",

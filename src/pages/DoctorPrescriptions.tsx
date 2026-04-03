@@ -20,8 +20,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DoctorNavbar from "@/components/DoctorNavbar";
-import { collection, getDocs, query, where, orderBy, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  getDoctorRecordForAuthUid,
+  getPrescriptionsForDoctor,
+  getDoctorPatientsList,
+  addPrescriptionForDoctor,
+} from "@/services/doctorService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,110 +85,40 @@ const DoctorPrescriptions = () => {
   const loadPrescriptions = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Doktor reçeteleri yükleniyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      
-      // Önce doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorId = doctorDoc.id;
-        
-        console.log("👨‍⚕️ Doktor ID:", doctorId);
-        
-        // Doktorun reçetelerini getir - index hatası için fallback ile
-        const prescriptionsRef = collection(db, "prescriptions");
-        
-        try {
-          // Önce orderBy ile deneyelim
-          const prescriptionsQuery = query(
-            prescriptionsRef, 
-            where("doctorId", "==", doctorId),
-            orderBy("date", "desc")
-          );
-          const prescriptionsSnapshot = await getDocs(prescriptionsQuery);
-          
-          const prescriptionsData: Prescription[] = prescriptionsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              patientId: data.patientId || "",
-              patientName: data.patientName || "Bilinmeyen Hasta",
-              doctorId: data.doctorId || "",
-              doctorName: data.doctorName || "Bilinmeyen Doktor",
-              date: data.date || "",
-              medications: data.medications || [],
-              dosage: data.dosage || "",
-              instructions: data.instructions || "",
-              status: data.status || "active",
-              notes: data.notes || "",
-              createdAt: data.createdAt || new Date()
-            };
-          });
-          
-          setPrescriptions(prescriptionsData);
-          console.log("💊 Reçeteler yüklendi (orderBy ile):", prescriptionsData.length);
-          
-        } catch (indexError: any) {
-          // Index hatası varsa, orderBy olmadan deneyelim
-          if (indexError.code === 'failed-precondition' || indexError.message.includes('index')) {
-            console.log("⚠️ Index hatası, orderBy olmadan deneyelim...");
-            
-            const prescriptionsQuery = query(
-              prescriptionsRef, 
-              where("doctorId", "==", doctorId)
-            );
-            const prescriptionsSnapshot = await getDocs(prescriptionsQuery);
-            
-            const prescriptionsData: Prescription[] = prescriptionsSnapshot.docs.map(doc => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                patientId: data.patientId || "",
-                patientName: data.patientName || "Bilinmeyen Hasta",
-                doctorId: data.doctorId || "",
-                doctorName: data.doctorName || "Bilinmeyen Doktor",
-                date: data.date || "",
-                medications: data.medications || [],
-                dosage: data.dosage || "",
-                instructions: data.instructions || "",
-                status: data.status || "active",
-                notes: data.notes || "",
-                createdAt: data.createdAt || new Date()
-              };
-            });
-            
-            // Client-side sorting
-            prescriptionsData.sort((a, b) => b.date.localeCompare(a.date));
-            
-            setPrescriptions(prescriptionsData);
-            console.log("💊 Reçeteler yüklendi (client-side sorted):", prescriptionsData.length);
-          } else {
-            throw indexError;
-          }
-        }
-        
-        toast({
-          title: "Başarılı",
-          description: `${prescriptions.length} reçete yüklendi.`,
-        });
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor bilgileri bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error("❌ Reçeteler yüklenemedi:", error);
+      const raw = await getPrescriptionsForDoctor(record.id);
+      const prescriptionsData: Prescription[] = raw.map((data) => ({
+        id: data.id,
+        patientId: data.patientId || "",
+        patientName: data.patientName || "Bilinmeyen Hasta",
+        doctorId: data.doctorId || "",
+        doctorName: data.doctorName || data.doctor || "Bilinmeyen Doktor",
+        date: data.date || "",
+        medications: data.medicine ? [data.medicine] : Array.isArray(data.medications) ? data.medications : [],
+        dosage: data.dosage || "",
+        instructions: data.instructions || "",
+        status: data.status === "completed" ? "completed" : "active",
+        notes: data.notes || "",
+        createdAt: data.createdAt || new Date(),
+      }));
+      setPrescriptions(prescriptionsData);
+      toast({
+        title: "Başarılı",
+        description: `${prescriptionsData.length} reçete yüklendi.`,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Reçeteler yüklenirken hata oluştu: ${error.message}`,
+        description: `Reçeteler yüklenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {
@@ -194,79 +128,18 @@ const DoctorPrescriptions = () => {
 
   const loadPatients = async () => {
     try {
-      console.log("🔄 Doktor hastaları yükleniyor...");
-      
-      // Önce doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorId = doctorDoc.id;
-        
-        console.log("👨‍⚕️ Doktor ID:", doctorId);
-        
-        // Doktorun randevularını getir
-        const appointmentsRef = collection(db, "appointments");
-        const appointmentsQuery = query(
-          appointmentsRef, 
-          where("doctorId", "==", doctorId)
-        );
-        const appointmentsSnapshot = await getDocs(appointmentsQuery);
-        
-        // Benzersiz hastaları bul
-        const patientMap = new Map<string, any>();
-        
-        appointmentsSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          const patientId = data.patientId;
-          
-          if (!patientMap.has(patientId)) {
-            patientMap.set(patientId, {
-              id: patientId,
-              name: data.patientName || "Bilinmeyen Hasta",
-              email: data.patientEmail || "",
-              phone: ""
-            });
-          }
-        });
-        
-        // Hasta detaylarını getir
-        const patientsData: Patient[] = [];
-        for (const [patientId, patientInfo] of patientMap) {
-          try {
-            const patientQuery = query(usersRef, where("userId", "==", patientId), where("role", "==", "patient"));
-            const patientSnapshot = await getDocs(patientQuery);
-            
-            if (!patientSnapshot.empty) {
-              const patientDoc = patientSnapshot.docs[0];
-              const patientData = patientDoc.data();
-              
-              patientsData.push({
-                id: patientId,
-                name: patientData.name || patientInfo.name,
-                email: patientData.email || patientInfo.email,
-                phone: patientData.phone || ""
-              });
-            } else {
-              // Eğer hasta users koleksiyonunda yoksa, randevu verilerinden al
-              patientsData.push(patientInfo);
-            }
-          } catch (error) {
-            console.error("❌ Hasta bilgileri alınamadı:", patientId, error);
-            patientsData.push(patientInfo);
-          }
-        }
-        
-        setPatients(patientsData);
-        console.log("👥 Hastalar yüklendi:", patientsData.length);
-        
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
-      }
-    } catch (error: any) {
-      console.error("❌ Hastalar yüklenemedi:", error);
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) return;
+      const rows = await getDoctorPatientsList(record.id);
+      const patientsData: Patient[] = rows.map((r) => ({
+        id: r.patientId,
+        name: r.patientName,
+        email: r.email,
+        phone: r.phone,
+      }));
+      setPatients(patientsData);
+    } catch {
+      /* sessiz — hasta listesi yardımcı */
     }
   };
 
@@ -301,64 +174,45 @@ const DoctorPrescriptions = () => {
       }
 
       setLoading(true);
-      
-      console.log("🔄 Reçete oluşturuluyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      console.log("👤 Seçilen Hasta:", newPrescriptionForm.patientName);
-      
-      // Önce doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorData = doctorDoc.data();
-        
-        const prescriptionData = {
-          patientId: newPrescriptionForm.patientId,
-          patientName: newPrescriptionForm.patientName,
-          doctorId: doctorDoc.id,
-          doctorName: doctorData.name,
-          date: new Date().toISOString().split('T')[0],
-          medications: newPrescriptionForm.medications.split(',').map(m => m.trim()).filter(m => m),
-          dosage: newPrescriptionForm.dosage,
-          instructions: newPrescriptionForm.instructions,
-          status: "active",
-          notes: newPrescriptionForm.notes,
-          createdAt: new Date()
-        };
-        
-        console.log("💊 Reçete verisi:", prescriptionData);
-        
-        await addDoc(collection(db, "prescriptions"), prescriptionData);
-        
-        console.log("✅ Reçete başarıyla oluşturuldu");
-        
-        toast({
-          title: "Başarılı",
-          description: `${newPrescriptionForm.patientName} için reçete başarıyla oluşturuldu.`,
-        });
-        
-        setShowNewPrescription(false);
-        setNewPrescriptionForm({
-          patientId: "",
-          patientName: "",
-          medications: "",
-          dosage: "",
-          instructions: "",
-          notes: ""
-        });
-        
-        await loadPrescriptions();
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor bilgileri bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
+      const medList = newPrescriptionForm.medications
+        .split(",")
+        .map((m) => m.trim())
+        .filter(Boolean);
+      await addPrescriptionForDoctor({
+        patientId: newPrescriptionForm.patientId,
+        patientName: newPrescriptionForm.patientName,
+        medicine: medList.join(", ") || newPrescriptionForm.medications.trim(),
+        dosage: newPrescriptionForm.dosage,
+        instructions: newPrescriptionForm.instructions,
+        quantity: medList.length ? `${medList.length} kalem` : "1",
+        doctorName: record.name,
+        doctorId: record.id,
+        date: new Date().toISOString().split("T")[0],
+        status: "active",
+      });
+      toast({
+        title: "Başarılı",
+        description: `${newPrescriptionForm.patientName} için reçete (demo) kaydedildi.`,
+      });
+      setShowNewPrescription(false);
+      setNewPrescriptionForm({
+        patientId: "",
+        patientName: "",
+        medications: "",
+        dosage: "",
+        instructions: "",
+        notes: "",
+      });
+      await loadPrescriptions();
     } catch (error: any) {
       console.error("❌ Reçete oluşturulamadı:", error);
       toast({

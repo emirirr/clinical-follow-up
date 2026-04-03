@@ -25,8 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DoctorNavbar from "@/components/DoctorNavbar";
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDoctorRecordForAuthUid, updateDoctorProfile } from "@/services/doctorService";
 
 interface DoctorProfile {
   id: string;
@@ -64,59 +63,43 @@ const DoctorProfile = () => {
   const loadDoctorProfile = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Doktor profili yükleniyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      
-      // Doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorData = doctorDoc.data();
-        
-        const profile: DoctorProfile = {
-          id: doctorDoc.id,
-          userId: doctorData.userId,
-          email: doctorData.email,
-          name: doctorData.name,
-          phone: doctorData.phone || "",
-          department: doctorData.department || "",
-          specialty: doctorData.specialty || "",
-          status: doctorData.status || "active",
-          createdAt: doctorData.createdAt,
-          updatedAt: doctorData.updatedAt
-        };
-        
-        setDoctorProfile(profile);
-        setEditForm({
-          name: profile.name,
-          phone: profile.phone,
-          department: profile.department,
-          specialty: profile.specialty
-        });
-        
-        console.log("👨‍⚕️ Doktor profili yüklendi:", profile);
-        
-        toast({
-          title: "Başarılı",
-          description: "Profil bilgileri yüklendi.",
-        });
-      } else {
-        console.error("❌ Doktor profili bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor profili bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error("❌ Profil yüklenemedi:", error);
+      const profile: DoctorProfile = {
+        id: record.id,
+        userId: record.userId,
+        email: record.email,
+        name: record.name,
+        phone: record.phone || "",
+        department: record.department || "",
+        specialty: record.specialty || "",
+        status: record.status || "active",
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      };
+      setDoctorProfile(profile);
+      setEditForm({
+        name: profile.name,
+        phone: profile.phone,
+        department: profile.department,
+        specialty: profile.specialty,
+      });
+      toast({
+        title: "Başarılı",
+        description: "Profil bilgileri yüklendi.",
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Profil yüklenirken hata oluştu: ${error.message}`,
+        description: `Profil yüklenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {
@@ -127,7 +110,6 @@ const DoctorProfile = () => {
   const handleSave = async () => {
     try {
       setLoading(true);
-      
       if (!doctorProfile) {
         toast({
           title: "Hata",
@@ -136,31 +118,23 @@ const DoctorProfile = () => {
         });
         return;
       }
-      
-      // Firestore'da profili güncelle
-      await updateDoc(doc(db, "users", doctorProfile.id), {
+      await updateDoctorProfile(doctorProfile.id, {
         name: editForm.name,
         phone: editForm.phone,
         department: editForm.department,
         specialty: editForm.specialty,
-        updatedAt: new Date()
       });
-      
-      // Profili yeniden yükle
       await loadDoctorProfile();
-      
       setIsEditing(false);
-      
       toast({
         title: "Başarılı",
-        description: "Profil başarıyla güncellendi.",
+        description: "Profil (demo) güncellendi.",
       });
-      
-    } catch (error: any) {
-      console.error("❌ Profil güncellenemedi:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Profil güncellenirken hata oluştu: ${error.message}`,
+        description: `Profil güncellenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {

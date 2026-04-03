@@ -24,8 +24,14 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminNavbar from "@/components/AdminNavbar";
-import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  getSystemSettings,
+  saveSystemSettings,
+  loadUsersForAdmin,
+  loadActivityLogsForAdmin,
+  loadSecurityLogsForAdmin,
+  exportCollectionDemo,
+} from "@/services/adminService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -95,42 +101,30 @@ const AdminSettings = () => {
     try {
       setLoading(true);
       
-      console.log("🔧 Firebase'den ayarlar yükleniyor...");
-      
-      // Firestore'dan ayarları çek
-      const settingsRef = doc(db, "settings", "system");
-      const settingsSnapshot = await getDoc(settingsRef);
-      
-      if (settingsSnapshot.exists()) {
-        const firebaseSettings = settingsSnapshot.data();
-        console.log("✅ Ayarlar yüklendi:", firebaseSettings);
-        
-        setSettings({
-          clinicName: firebaseSettings.clinicName || "Klinik Takip",
-          clinicAddress: firebaseSettings.clinicAddress || "İstanbul, Türkiye",
-          clinicPhone: firebaseSettings.clinicPhone || "+90 212 555 0123",
-          clinicEmail: firebaseSettings.clinicEmail || "info@klinik.com",
-          timezone: firebaseSettings.timezone || "Europe/Istanbul",
-          language: firebaseSettings.language || "tr",
-          notifications: {
-            email: firebaseSettings.notifications?.email ?? true,
-            sms: firebaseSettings.notifications?.sms ?? false,
-            push: firebaseSettings.notifications?.push ?? true
-          },
-          security: {
-            twoFactorAuth: firebaseSettings.security?.twoFactorAuth ?? false,
-            sessionTimeout: firebaseSettings.security?.sessionTimeout ?? 30,
-            passwordPolicy: firebaseSettings.security?.passwordPolicy ?? "strong"
-          },
-          backup: {
-            autoBackup: firebaseSettings.backup?.autoBackup ?? true,
-            backupFrequency: firebaseSettings.backup?.backupFrequency ?? "daily",
-            retentionDays: firebaseSettings.backup?.retentionDays ?? 30
-          }
-        });
-      } else {
-        console.log("📝 Varsayılan ayarlar kullanılıyor");
-      }
+      const stored = await getSystemSettings();
+      setSettings({
+        clinicName: stored.clinicName || "Klinik Takip",
+        clinicAddress: stored.clinicAddress || "İstanbul, Türkiye",
+        clinicPhone: stored.clinicPhone || "+90 212 555 0123",
+        clinicEmail: stored.clinicEmail || "info@klinik.com",
+        timezone: stored.timezone || "Europe/Istanbul",
+        language: stored.language || "tr",
+        notifications: {
+          email: stored.notifications?.email ?? true,
+          sms: stored.notifications?.sms ?? false,
+          push: stored.notifications?.push ?? true,
+        },
+        security: {
+          twoFactorAuth: stored.security?.twoFactorAuth ?? false,
+          sessionTimeout: stored.security?.sessionTimeout ?? 30,
+          passwordPolicy: stored.security?.passwordPolicy ?? "strong",
+        },
+        backup: {
+          autoBackup: stored.backup?.autoBackup ?? true,
+          backupFrequency: stored.backup?.backupFrequency ?? "daily",
+          retentionDays: stored.backup?.retentionDays ?? 30,
+        },
+      });
       
       toast({
         title: "Başarılı",
@@ -152,14 +146,7 @@ const AdminSettings = () => {
   // Kullanıcı listesini yükle
   const loadUsers = async () => {
     try {
-      const usersRef = collection(db, "users");
-      const usersSnapshot = await getDocs(usersRef);
-      
-      const usersData = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
+      const usersData = await loadUsersForAdmin();
       setUsers(usersData);
       console.log("👥 Kullanıcı listesi yüklendi:", usersData.length);
       
@@ -171,14 +158,7 @@ const AdminSettings = () => {
   // Aktivite loglarını yükle
   const loadActivityLogs = async () => {
     try {
-      const logsRef = collection(db, "activityLogs");
-      const logsSnapshot = await getDocs(logsRef);
-      
-      const logsData = logsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
+      const logsData = await loadActivityLogsForAdmin();
       setActivityLogs(logsData);
       console.log("📊 Aktivite logları yüklendi:", logsData.length);
       
@@ -190,14 +170,7 @@ const AdminSettings = () => {
   // Güvenlik loglarını yükle
   const loadSecurityLogs = async () => {
     try {
-      const logsRef = collection(db, "securityLogs");
-      const logsSnapshot = await getDocs(logsRef);
-      
-      const logsData = logsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
+      const logsData = await loadSecurityLogsForAdmin();
       setSecurityLogs(logsData);
       console.log("🔒 Güvenlik logları yüklendi:", logsData.length);
       
@@ -216,13 +189,7 @@ const AdminSettings = () => {
       console.log("💾 Ayarlar kaydediliyor...");
       console.log("📝 Kaydedilecek ayarlar:", settings);
       
-      // Firestore'a ayarları kaydet
-      const settingsRef = doc(db, "settings", "system");
-      await setDoc(settingsRef, {
-        ...settings,
-        updatedAt: new Date(),
-        updatedBy: user?.email || "admin"
-      });
+      await saveSystemSettings(settings, user?.email || "admin");
       
       console.log("✅ Ayarlar başarıyla kaydedildi");
       
@@ -545,18 +512,11 @@ const AdminSettings = () => {
                     try {
                       console.log("📦 Manuel yedekleme başlatılıyor...");
                       
-                      // Tüm koleksiyonları yedekle
-                      const collections = ["users", "appointments", "settings"];
-                      const backupData: any = {};
-                      
-                      for (const collectionName of collections) {
-                        const collectionRef = collection(db, collectionName);
-                        const snapshot = await getDocs(collectionRef);
-                        backupData[collectionName] = snapshot.docs.map(doc => ({
-                          id: doc.id,
-                          ...doc.data()
-                        }));
+                      const backupData: Record<string, unknown> = {};
+                      for (const collectionName of ["users", "appointments", "prescriptions", "testResults"] as const) {
+                        backupData[collectionName] = await exportCollectionDemo(collectionName);
                       }
+                      backupData.settings = await getSystemSettings();
                       
                       // Yedekleme verilerini localStorage'a kaydet
                       localStorage.setItem("clinicBackup", JSON.stringify({
@@ -675,21 +635,13 @@ const AdminSettings = () => {
                     try {
                       console.log("🔧 Veritabanı optimizasyonu başlatılıyor...");
                       
-                      // Tüm koleksiyonları kontrol et
-                      const collections = ["users", "appointments", "settings"];
                       let totalDocs = 0;
-                      
-                      for (const collectionName of collections) {
-                        const collectionRef = collection(db, collectionName);
-                        const snapshot = await getDocs(collectionRef);
-                        totalDocs += snapshot.docs.length;
+                      for (const name of ["users", "appointments", "prescriptions", "testResults"] as const) {
+                        totalDocs += (await exportCollectionDemo(name)).length;
                       }
-                      
-                      console.log("📊 Toplam doküman sayısı:", totalDocs);
-                      
                       toast({
                         title: "Başarılı",
-                        description: `Veritabanı kontrol edildi. Toplam ${totalDocs} doküman.`,
+                        description: `Demo veri özeti: toplam ${totalDocs} kayıt.`,
                       });
                       
                     } catch (error) {
@@ -912,21 +864,10 @@ const AdminSettings = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Firebase Konfigürasyonu</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Project ID:</span>
-                    <span className="font-mono">kliniktakip-95901</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Auth Domain:</span>
-                    <span className="font-mono">kliniktakip-95901.firebaseapp.com</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Storage Bucket:</span>
-                    <span className="font-mono">kliniktakip-95901.firebasestorage.app</span>
-                  </div>
-                </div>
+                <h4 className="font-medium mb-2">Demo modu</h4>
+                <p className="text-sm text-gray-600">
+                  Bu önizleme sürümünde veriler tarayıcı belleğinde tutulur; harici API veya Firebase bağlantısı yoktur.
+                </p>
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-medium mb-2">API Anahtarları</h4>

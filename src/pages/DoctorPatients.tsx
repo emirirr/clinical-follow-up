@@ -20,8 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DoctorNavbar from "@/components/DoctorNavbar";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDoctorRecordForAuthUid, getDoctorPatientsList } from "@/services/doctorService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -59,117 +58,39 @@ const DoctorPatients = () => {
   const loadPatients = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Doktor hastaları yükleniyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      
-      // Önce doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorId = doctorDoc.id;
-        
-        // Doktorun randevularını getir
-        const appointmentsRef = collection(db, "appointments");
-        const appointmentsQuery = query(
-          appointmentsRef, 
-          where("doctorId", "==", doctorId)
-        );
-        const appointmentsSnapshot = await getDocs(appointmentsQuery);
-        
-        // Benzersiz hastaları bul
-        const patientMap = new Map<string, any>();
-        
-        appointmentsSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          const patientId = data.patientId;
-          
-          if (!patientMap.has(patientId)) {
-            patientMap.set(patientId, {
-              id: patientId,
-              name: data.patientName || "Bilinmeyen Hasta",
-              email: data.patientEmail || "",
-              phone: "",
-              birthDate: "",
-              gender: "",
-              bloodType: "",
-              totalAppointments: 0,
-              completedAppointments: 0,
-              upcomingAppointments: 0,
-              lastAppointment: ""
-            });
-          }
-          
-          const patient = patientMap.get(patientId);
-          patient.totalAppointments++;
-          
-          if (data.status === "completed") {
-            patient.completedAppointments++;
-          } else if (data.status === "upcoming") {
-            patient.upcomingAppointments++;
-          }
-          
-          // Son randevu tarihini güncelle
-          if (!patient.lastAppointment || data.date > patient.lastAppointment) {
-            patient.lastAppointment = data.date;
-          }
-        });
-        
-        // Hasta bilgilerini getir
-        const patientsData: Patient[] = [];
-        
-        for (const [patientId, patientData] of patientMap) {
-          // Hasta detaylarını getir
-          const patientQuery = query(collection(db, "users"), where("userId", "==", patientId));
-          const patientSnapshot = await getDocs(patientQuery);
-          
-          if (!patientSnapshot.empty) {
-            const patientDoc = patientSnapshot.docs[0];
-            const patientInfo = patientDoc.data();
-            
-            patientsData.push({
-              ...patientData,
-              phone: patientInfo.phone || "",
-              birthDate: patientInfo.birthDate || "",
-              gender: patientInfo.gender || "",
-              bloodType: patientInfo.bloodType || ""
-            });
-          } else {
-            // Hasta bilgileri bulunamazsa sadece randevu verilerini kullan
-            patientsData.push(patientData);
-          }
-        }
-        
-        // Son randevu tarihine göre sırala
-        patientsData.sort((a, b) => {
-          if (!a.lastAppointment) return 1;
-          if (!b.lastAppointment) return -1;
-          return b.lastAppointment.localeCompare(a.lastAppointment);
-        });
-        
-        setPatients(patientsData);
-        console.log("👥 Hastalar yüklendi:", patientsData.length);
-        
-        toast({
-          title: "Başarılı",
-          description: `${patientsData.length} hasta yüklendi.`,
-        });
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor bilgileri bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error("❌ Hastalar yüklenemedi:", error);
+      const rows = await getDoctorPatientsList(record.id);
+      const patientsData: Patient[] = rows.map((r) => ({
+        id: r.patientId,
+        name: r.patientName,
+        email: r.email,
+        phone: r.phone,
+        birthDate: r.birthDate,
+        gender: r.gender,
+        bloodType: r.bloodType,
+        lastAppointment: r.lastVisit,
+        totalAppointments: r.totalAppointments,
+        completedAppointments: r.completedAppointments,
+        upcomingAppointments: r.upcomingAppointments,
+      }));
+      setPatients(patientsData);
+      toast({
+        title: "Başarılı",
+        description: `${patientsData.length} hasta yüklendi.`,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Hastalar yüklenirken hata oluştu: ${error.message}`,
+        description: `Hastalar yüklenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {

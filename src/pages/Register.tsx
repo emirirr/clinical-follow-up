@@ -22,7 +22,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+  const { signUp, refreshUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -62,6 +62,7 @@ const Register = () => {
       };
 
       await saveUserProfile(userProfile);
+      await refreshUser();
 
       toast({
         title: "Başarılı",

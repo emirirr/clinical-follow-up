@@ -28,8 +28,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import DoctorNavbar from "@/components/DoctorNavbar";
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  getDoctorRecordForAuthUid,
+  getDoctorStats,
+  getRecentAppointmentsForDoctor,
+} from "@/services/doctorService";
 
 interface DoctorStats {
   totalPatients: number;
@@ -75,147 +78,31 @@ const DoctorDashboard = () => {
   const loadDoctorData = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Doktor verileri yükleniyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      
-      // Doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorData = doctorDoc.data();
-        console.log("👨‍⚕️ Doktor bilgileri:", doctorData);
-        setDoctorInfo({ id: doctorDoc.id, ...doctorData });
-        
-        // İstatistikleri hesapla
-        await loadDoctorStats(doctorDoc.id);
-        await loadRecentAppointments(doctorDoc.id);
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor bilgileri bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error("❌ Veriler yüklenemedi:", error);
+      setDoctorInfo(record);
+      const [s, recent] = await Promise.all([
+        getDoctorStats(record.id),
+        getRecentAppointmentsForDoctor(record.id, 5),
+      ]);
+      setStats(s);
+      setRecentAppointments(recent);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Veriler yüklenirken hata oluştu: ${error.message}`,
+        description: `Veriler yüklenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadDoctorStats = async (doctorId: string) => {
-    try {
-      // Randevuları getir
-      const appointmentsRef = collection(db, "appointments");
-      const appointmentsQuery = query(appointmentsRef, where("doctorId", "==", doctorId));
-      const appointmentsSnapshot = await getDocs(appointmentsQuery);
-      
-      const appointments = appointmentsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          patientId: data.patientId || "",
-          status: data.status || "upcoming",
-          ...data
-        };
-      });
-      
-      // Hastaları getir (benzersiz hasta sayısı)
-      const uniquePatients = new Set(appointments.map(apt => apt.patientId));
-      
-      // Reçeteleri getir
-      const prescriptionsRef = collection(db, "prescriptions");
-      const prescriptionsQuery = query(prescriptionsRef, where("doctorId", "==", doctorId));
-      const prescriptionsSnapshot = await getDocs(prescriptionsQuery);
-      
-      const newStats: DoctorStats = {
-        totalPatients: uniquePatients.size,
-        totalAppointments: appointments.length,
-        completedAppointments: appointments.filter(apt => apt.status === "completed").length,
-        upcomingAppointments: appointments.filter(apt => apt.status === "upcoming").length,
-        cancelledAppointments: appointments.filter(apt => apt.status === "cancelled").length,
-        totalPrescriptions: prescriptionsSnapshot.size
-      };
-      
-      setStats(newStats);
-      console.log("📊 Doktor istatistikleri:", newStats);
-      
-    } catch (error) {
-      console.error("❌ İstatistikler yüklenemedi:", error);
-    }
-  };
-
-  const loadRecentAppointments = async (doctorId: string) => {
-    try {
-      const appointmentsRef = collection(db, "appointments");
-      
-      // Önce index hatası olmadan deneyelim
-      try {
-        const appointmentsQuery = query(
-          appointmentsRef, 
-          where("doctorId", "==", doctorId),
-          orderBy("date", "desc"),
-          limit(5)
-        );
-        const appointmentsSnapshot = await getDocs(appointmentsQuery);
-        
-        const appointments = appointmentsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          patientName: doc.data().patientName || "Bilinmeyen Hasta",
-          date: doc.data().date || "",
-          time: doc.data().time || "",
-          status: doc.data().status || "upcoming",
-          type: doc.data().type || "",
-          location: doc.data().location || ""
-        }));
-        
-        setRecentAppointments(appointments);
-        console.log("📅 Son randevular:", appointments);
-        
-      } catch (indexError: any) {
-        // Index hatası varsa, orderBy olmadan deneyelim
-        if (indexError.code === 'failed-precondition' || indexError.message.includes('index')) {
-          console.log("⚠️ Index hatası, orderBy olmadan deneyelim...");
-          
-          const appointmentsQuery = query(
-            appointmentsRef, 
-            where("doctorId", "==", doctorId),
-            limit(5)
-          );
-          const appointmentsSnapshot = await getDocs(appointmentsQuery);
-          
-          const appointments = appointmentsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            patientName: doc.data().patientName || "Bilinmeyen Hasta",
-            date: doc.data().date || "",
-            time: doc.data().time || "",
-            status: doc.data().status || "upcoming",
-            type: doc.data().type || "",
-            location: doc.data().location || ""
-          }));
-          
-          // Client-side sorting
-          appointments.sort((a, b) => b.date.localeCompare(a.date));
-          
-          setRecentAppointments(appointments);
-          console.log("📅 Son randevular (client-side sorted):", appointments);
-        } else {
-          throw indexError;
-        }
-      }
-      
-    } catch (error) {
-      console.error("❌ Son randevular yüklenemedi:", error);
     }
   };
 
@@ -411,7 +298,7 @@ const DoctorDashboard = () => {
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Verileri Yenile
                   </Button>
-                  <p className="text-xs text-gray-400">Firebase'den güncel verileri çek</p>
+                  <p className="text-xs text-gray-400">Demo verileri yeniden yüklenir</p>
                 </div>
               </div>
             )}

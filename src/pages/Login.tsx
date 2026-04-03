@@ -26,22 +26,9 @@ const Login = () => {
       await signIn(email, password);
       // Akıllı yönlendirme SmartRedirect bileşeni tarafından yapılacak
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Giriş hatası:", error);
-      
-      if (error.code === "auth/user-not-found") {
-        setError("Bu email adresi ile kayıtlı kullanıcı bulunamadı. Lütfen kayıt olun.");
-      } else if (error.code === "auth/wrong-password") {
-        setError("Yanlış şifre. Lütfen şifrenizi kontrol edin.");
-      } else if (error.code === "auth/invalid-email") {
-        setError("Geçersiz email adresi. Lütfen doğru bir email adresi girin.");
-      } else if (error.code === "auth/too-many-requests") {
-        setError("Çok fazla başarısız giriş denemesi. Lütfen bir süre bekleyin.");
-      } else if (error.code === "auth/network-request-failed") {
-        setError("Ağ bağlantısı sorunu. Lütfen internet bağlantınızı kontrol edin.");
-      } else {
-        setError(error.message || "Giriş yapılırken bir hata oluştu");
-      }
+      setError(error instanceof Error ? error.message : "Giriş yapılırken bir hata oluştu");
     } finally {
       setLoading(false);
     }
@@ -56,10 +43,15 @@ const Login = () => {
               Klinik Takip
             </CardTitle>
             <CardDescription className="text-center">
-              Hesabınıza giriş yapın
+              Demo önizleme — şifre herhangi bir değer olabilir.
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-xs text-muted-foreground text-center mb-4">
+              Örnek: <span className="font-mono">hasta@demo.local</span>,{" "}
+              <span className="font-mono">doktor@demo.local</span>,{" "}
+              <span className="font-mono">admin@demo.local</span>
+            </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">

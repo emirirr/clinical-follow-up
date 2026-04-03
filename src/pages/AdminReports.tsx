@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +18,9 @@ import {
   RefreshCw
 } from "lucide-react";
 import AdminNavbar from "@/components/AdminNavbar";
-import { collection, getDocs, query, where, orderBy, addDoc } from "firebase/firestore";
-import { db, testFirebaseConnection } from "@/lib/firebase";
+import { listAllUsers, demoAddAppointment } from "@/services/adminService";
+import { getDemoAppointments } from "@/lib/demo-store";
+import { DEMO_PATIENT_DOC_ID, DEMO_DOCTOR_DOC_ID } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
 
 interface ReportData {
@@ -54,8 +54,7 @@ interface MonthlyTrend {
   appointments: number;
 }
 
-  const AdminReports = () => {
-    const { user } = useAuth();
+const AdminReports = () => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportData>({
@@ -79,35 +78,22 @@ interface MonthlyTrend {
     try {
       setLoading(true);
       
-      console.log("Firebase'den rapor verileri yükleniyor...");
-      
-      // Kullanıcıları yükle (hasta ve doktor sayıları için)
-      const usersRef = collection(db, "users");
-      const usersSnapshot = await getDocs(usersRef);
-      
-      const patients = usersSnapshot.docs.filter(doc => doc.data().role === "patient");
-      const doctors = usersSnapshot.docs.filter(doc => doc.data().role === "doctor");
-      
-      // Randevuları yükle
-      const appointmentsRef = collection(db, "appointments");
-      const appointmentsSnapshot = await getDocs(appointmentsRef);
-      
-      const appointments = appointmentsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date || "",
-          status: data.status || "upcoming",
-          doctorId: data.doctorId || "",
-          patientId: data.patientId || "",
-          patientName: data.patientName || "",
-          doctorName: data.doctorName || "",
-          type: data.type || "",
-          location: data.location || "",
-          notes: data.notes || "",
-          createdAt: data.createdAt || new Date()
-        };
-      });
+      const users = listAllUsers();
+      const patients = users.filter((u) => u.role === "patient");
+      const doctors = users.filter((u) => u.role === "doctor");
+      const appointments = getDemoAppointments().map((row) => ({
+        id: row.id,
+        date: row.date || "",
+        status: row.status || "upcoming",
+        doctorId: row.doctorId || "",
+        patientId: row.patientId || "",
+        patientName: row.patientName || "",
+        doctorName: row.doctorName || "",
+        type: row.type || "",
+        location: row.location || "",
+        notes: row.notes || "",
+        createdAt: row.createdAt || new Date(),
+      }));
       
       // Bu ayki randevuları filtrele
       const currentDate = new Date();
@@ -167,14 +153,14 @@ interface MonthlyTrend {
       
       // Bölüm performansını hesapla (tüm randevular için)
       const departmentStats = doctors.reduce((acc: any, doctor) => {
-        const department = doctor.data().department || "Bilinmeyen";
+        const department = doctor.department || "Bilinmeyen";
         const doctorAppointments = appointments.filter(a => a.doctorId === doctor.id); // Tüm randevular
         const completedCount = doctorAppointments.filter(a => a.status === "completed").length;
         const totalCount = doctorAppointments.length;
         const performance = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
         
         console.log("👨‍⚕️ Doktor randevu istatistikleri:", {
-          doctorName: doctor.data().name,
+          doctorName: doctor.name,
           department,
           totalAppointments: totalCount,
           completedAppointments: completedCount,
@@ -200,9 +186,9 @@ interface MonthlyTrend {
       const doctorStats = doctors.map(doctor => {
         const doctorAppointments = appointments.filter(a => a.doctorId === doctor.id); // Tüm randevular
         return {
-          name: doctor.data().name,
+          name: doctor.name,
           appointmentCount: doctorAppointments.length,
-          department: doctor.data().department || "Bilinmeyen"
+          department: doctor.department || "Bilinmeyen"
         };
       }).sort((a, b) => b.appointmentCount - a.appointmentCount).slice(0, 4);
       
@@ -262,7 +248,7 @@ interface MonthlyTrend {
       
       toast({
         title: "Başarılı",
-        description: "Rapor verileri başarıyla yüklendi.",
+        description: "Rapor verileri yüklendi (demo).",
       });
       
     } catch (error) {
@@ -303,77 +289,41 @@ interface MonthlyTrend {
             <p className="text-gray-600">Klinik performansı ve istatistikler</p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                // Firebase bağlantı testi
-                try {
-                  console.log("Firebase bağlantısı test ediliyor...");
-                  const result = await testFirebaseConnection();
-                  
-                  if (result.success) {
-                    toast({
-                      title: "✅ Bağlantı Başarılı",
-                      description: `Kullanıcı: ${result.users}, Randevu: ${result.appointments}`,
-                    });
-                  } else {
-                    toast({
-                      title: "❌ Bağlantı Hatası",
-                      description: result.message,
-                      variant: "destructive",
-                    });
-                  }
-                } catch (error) {
-                  console.error("Bağlantı testi hatası:", error);
-                  toast({
-                    title: "❌ Test Hatası",
-                    description: "Firebase bağlantısı test edilemedi.",
-                    variant: "destructive",
-                  });
-                }
+            <Button
+              variant="outline"
+              onClick={() => {
+                toast({
+                  title: "Demo",
+                  description: `${listAllUsers().length} kullanıcı, ${getDemoAppointments().length} randevu.`,
+                });
               }}
             >
-              Firebase Test
+              Demo Özeti
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={async () => {
-                // Test randevu ekle
                 try {
-                  console.log("🧪 Test randevu ekleniyor...");
-                  
-                  const testAppointment = {
-                    patientId: "test-patient-" + Date.now(),
-                    patientName: "Test Hasta " + new Date().getTime(),
-                    doctorId: "test-doctor-" + Date.now(),
-                    doctorName: "Dr. Test " + new Date().getTime(),
-                    date: new Date().toISOString().split('T')[0], // Bugünün tarihi
+                  const id = demoAddAppointment({
+                    patientId: DEMO_PATIENT_DOC_ID,
+                    patientName: "Test Hasta",
+                    doctorId: DEMO_DOCTOR_DOC_ID,
+                    doctor: "Dr. Mehmet Kaya",
+                    doctorName: "Dr. Mehmet Kaya",
+                    date: new Date().toISOString().split("T")[0],
                     time: "10:00",
                     type: "Test Muayene",
-                    location: "Test Bölümü",
-                    notes: "Test randevu notu - " + new Date().toLocaleString(),
+                    location: "Demo",
+                    notes: "Raporlar testi — " + new Date().toLocaleString("tr-TR"),
                     status: "upcoming",
-                    createdAt: new Date()
-                  };
-                  
-                  console.log("📝 Test randevu verisi:", testAppointment);
-                  
-                  const appointmentsRef = collection(db, "appointments");
-                  const docRef = await addDoc(appointmentsRef, testAppointment);
-                  console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
-                  
+                  });
                   toast({
                     title: "Başarılı",
-                    description: `Test randevu eklendi. ID: ${docRef.id}`,
+                    description: `Test randevu eklendi. ID: ${id}`,
                   });
-                  
-                  // 2 saniye sonra raporları yenile
-                  setTimeout(() => {
-                    loadReportData();
-                  }, 2000);
-                  
+                  setTimeout(() => loadReportData(), 300);
                 } catch (error) {
-                  console.error("❌ Test randevu ekleme hatası:", error);
+                  console.error("Test randevu ekleme hatası:", error);
                   toast({
                     title: "Hata",
                     description: "Test randevu eklenirken hata oluştu.",

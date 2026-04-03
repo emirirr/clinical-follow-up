@@ -21,8 +21,14 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminNavbar from "@/components/AdminNavbar";
-import { collection, getDocs, query, where, orderBy, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db, testFirebaseConnection } from "@/lib/firebase";
+import {
+  listAllUsers,
+  demoAddAppointment,
+  demoPatchAppointment,
+  demoRemoveAppointment,
+} from "@/services/adminService";
+import { getDemoAppointments } from "@/lib/demo-store";
+import { DEMO_PATIENT_DOC_ID, DEMO_DOCTOR_DOC_ID } from "@/lib/demo-store";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -79,75 +85,33 @@ const AdminAppointments = () => {
     notes: ""
   });
 
-  // Firebase'den randevu verilerini yükle
   const loadAppointments = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔍 Firebase'den randevular yükleniyor...");
-      console.log("📊 Firebase db objesi:", db);
-      
-      // Firestore'dan randevu verilerini çek
-      const appointmentsRef = collection(db, "appointments");
-      console.log("📋 Appointments referansı oluşturuldu:", appointmentsRef);
-      
-      const appointmentsQuery = query(appointmentsRef, orderBy("createdAt", "desc"));
-      console.log("🔍 Query oluşturuldu:", appointmentsQuery);
-      
-      console.log("⏳ Veriler çekiliyor...");
-      const appointmentsSnapshot = await getDocs(appointmentsQuery);
-      console.log("✅ Snapshot alındı:", appointmentsSnapshot);
-      console.log("📊 Toplam randevu sayısı:", appointmentsSnapshot.docs.length);
-      
-      // Her dokümanı detaylı logla
-      appointmentsSnapshot.docs.forEach((doc, index) => {
-        console.log(`📄 Doküman ${index + 1}:`, {
-          id: doc.id,
-          data: doc.data(),
-          exists: doc.exists()
-        });
-      });
-      
-      const appointmentsData: Appointment[] = appointmentsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log("🔄 Doküman verisi işleniyor:", data);
-        
-        const appointment = {
-          id: doc.id,
-          patientId: data.patientId || "",
-          patientName: data.patientName || "İsimsiz Hasta",
-          doctorId: data.doctorId || "",
-          doctorName: data.doctorName || "İsimsiz Doktor",
-          date: data.date || "",
-          time: data.time || "",
-          type: data.type || "",
-          status: data.status || "upcoming",
-          location: data.location || "",
-          notes: data.notes || "",
-          createdAt: data.createdAt || new Date()
-        };
-        
-        console.log("✅ İşlenmiş randevu:", appointment);
-        return appointment;
-      });
-      
-      console.log("🎯 Final randevu verileri:", appointmentsData);
-      console.log("📊 Toplam işlenmiş randevu sayısı:", appointmentsData.length);
-      
+      const rows = [...getDemoAppointments()].sort(
+        (a, b) => b.createdAt.seconds - a.createdAt.seconds
+      );
+      const appointmentsData: Appointment[] = rows.map((row) => ({
+        id: row.id,
+        patientId: row.patientId || "",
+        patientName: row.patientName || "İsimsiz Hasta",
+        doctorId: row.doctorId || "",
+        doctorName: row.doctorName || row.doctor || "İsimsiz Doktor",
+        date: row.date || "",
+        time: row.time || "",
+        type: row.type || "",
+        status: row.status || "upcoming",
+        location: row.location || "",
+        notes: row.notes || "",
+        createdAt: row.createdAt || new Date(),
+      }));
       setAppointments(appointmentsData);
-      
       toast({
         title: "Başarılı",
-        description: `${appointmentsData.length} randevu yüklendi.`,
+        description: `${appointmentsData.length} randevu yüklendi (demo).`,
       });
-      
-    } catch (error) {
-      console.error("❌ Randevular yüklenirken hata:", error);
-      console.error("🔍 Hata detayları:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+    } catch (error: unknown) {
+      console.error("Randevular yüklenirken hata:", error);
       toast({
         title: "Hata",
         description: "Randevu verileri yüklenirken bir hata oluştu.",
@@ -158,31 +122,25 @@ const AdminAppointments = () => {
     }
   };
 
-  // Hasta ve doktor verilerini yükle
   const loadPatientsAndDoctors = async () => {
     try {
-      const usersRef = collection(db, "users");
-      const usersSnapshot = await getDocs(usersRef);
-      
-      const patientsData = usersSnapshot.docs
-        .filter(doc => doc.data().role === "patient")
-        .map(doc => ({
-          id: doc.id,
-          name: doc.data().name,
-          email: doc.data().email
+      const users = listAllUsers();
+      const patientsData = users
+        .filter((u) => u.role === "patient")
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
         }));
-      
-      const doctorsData = usersSnapshot.docs
-        .filter(doc => doc.data().role === "doctor")
-        .map(doc => ({
-          id: doc.id,
-          name: doc.data().name,
-          department: doc.data().department
+      const doctorsData = users
+        .filter((u) => u.role === "doctor")
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          department: u.department,
         }));
-      
       setPatients(patientsData);
       setDoctors(doctorsData);
-      
     } catch (error) {
       console.error("Hasta ve doktor verileri yüklenirken hata:", error);
     }
@@ -201,11 +159,11 @@ const AdminAppointments = () => {
     try {
       setLoading(true);
       
-      // Firestore'a randevu kaydını ekle
-      const appointmentData = {
+      demoAddAppointment({
         patientId: appointmentForm.patientId,
         patientName: appointmentForm.patientName,
         doctorId: appointmentForm.doctorId,
+        doctor: appointmentForm.doctorName,
         doctorName: appointmentForm.doctorName,
         date: appointmentForm.date,
         time: appointmentForm.time,
@@ -213,10 +171,7 @@ const AdminAppointments = () => {
         location: appointmentForm.location,
         notes: appointmentForm.notes,
         status: "upcoming",
-        createdAt: new Date()
-      };
-      
-      await addDoc(collection(db, "appointments"), appointmentData);
+      });
       
       toast({
         title: "Başarılı",
@@ -310,18 +265,17 @@ const AdminAppointments = () => {
     try {
       setLoading(true);
       
-      // Firestore'da randevu bilgilerini güncelle
-      await updateDoc(doc(db, "appointments", selectedAppointment.id), {
+      demoPatchAppointment(selectedAppointment.id, {
         patientId: appointmentForm.patientId,
         patientName: appointmentForm.patientName,
         doctorId: appointmentForm.doctorId,
         doctorName: appointmentForm.doctorName,
+        doctor: appointmentForm.doctorName,
         date: appointmentForm.date,
         time: appointmentForm.time,
         type: appointmentForm.type,
         location: appointmentForm.location,
         notes: appointmentForm.notes,
-        updatedAt: new Date()
       });
       
       toast({
@@ -368,8 +322,7 @@ const AdminAppointments = () => {
     try {
       setLoading(true);
       
-      // Firestore'dan randevu kaydını sil
-      await deleteDoc(doc(db, "appointments", appointmentId));
+      demoRemoveAppointment(appointmentId);
       
       // Randevu listesini yenile
       await loadAppointments();
@@ -396,10 +349,8 @@ const AdminAppointments = () => {
     try {
       setLoading(true);
       
-      // Firestore'da randevu durumunu güncelle
-      await updateDoc(doc(db, "appointments", appointmentId), {
-        status: newStatus,
-        updatedAt: new Date()
+      demoPatchAppointment(appointmentId, {
+        status: newStatus as Appointment["status"],
       });
       
       // Randevu listesini yenile
@@ -487,87 +438,41 @@ const AdminAppointments = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Yenile
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                // Firebase bağlantı testi
-                try {
-                  console.log("Firebase bağlantısı test ediliyor...");
-                  const result = await testFirebaseConnection();
-                  
-                  if (result.success) {
-                    toast({
-                      title: "✅ Bağlantı Başarılı",
-                      description: `Kullanıcı: ${result.users}, Randevu: ${result.appointments}`,
-                    });
-                  } else {
-                    toast({
-                      title: "❌ Bağlantı Hatası",
-                      description: result.message,
-                      variant: "destructive",
-                    });
-                  }
-                } catch (error) {
-                  console.error("Bağlantı testi hatası:", error);
-                  toast({
-                    title: "❌ Test Hatası",
-                    description: "Firebase bağlantısı test edilemedi.",
-                    variant: "destructive",
-                  });
-                }
+            <Button
+              variant="outline"
+              onClick={() => {
+                toast({
+                  title: "Demo",
+                  description: `Yerel demo: ${getDemoAppointments().length} randevu, ${listAllUsers().length} kullanıcı.`,
+                });
               }}
             >
-              Firebase Test
+              Demo Özeti
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={async () => {
-                // Test randevu ekle
                 try {
-                  console.log("🧪 Test randevu ekleniyor...");
-                  
-                  const testAppointment = {
-                    patientId: "test-patient-" + Date.now(),
-                    patientName: "Test Hasta " + new Date().getTime(),
-                    doctorId: "test-doctor-" + Date.now(),
-                    doctorName: "Dr. Test " + new Date().getTime(),
-                    date: new Date().toISOString().split('T')[0],
+                  const id = demoAddAppointment({
+                    patientId: DEMO_PATIENT_DOC_ID,
+                    patientName: "Test Hasta",
+                    doctorId: DEMO_DOCTOR_DOC_ID,
+                    doctor: "Dr. Mehmet Kaya",
+                    doctorName: "Dr. Mehmet Kaya",
+                    date: new Date().toISOString().split("T")[0],
                     time: "10:00",
                     type: "Test Muayene",
-                    location: "Test Bölümü",
-                    notes: "Test randevu notu - " + new Date().toLocaleString(),
+                    location: "Demo bölümü",
+                    notes: "Test — " + new Date().toLocaleString("tr-TR"),
                     status: "upcoming",
-                    createdAt: new Date()
-                  };
-                  
-                  console.log("📝 Test randevu verisi:", testAppointment);
-                  console.log("📊 Firebase db objesi:", db);
-                  
-                  const appointmentsRef = collection(db, "appointments");
-                  console.log("📋 Appointments referansı:", appointmentsRef);
-                  
-                  console.log("⏳ Doküman ekleniyor...");
-                  const docRef = await addDoc(appointmentsRef, testAppointment);
-                  console.log("✅ Test randevu eklendi, doc ID:", docRef.id);
-                  
+                  });
                   toast({
                     title: "Başarılı",
-                    description: `Test randevu eklendi. ID: ${docRef.id}`,
+                    description: `Test randevu eklendi. ID: ${id}`,
                   });
-                  
-                  console.log("🔄 2 saniye sonra randevular yenilenecek...");
-                  setTimeout(() => {
-                    console.log("🔄 Randevular yenileniyor...");
-                    loadAppointments();
-                  }, 2000);
-                  
+                  setTimeout(() => loadAppointments(), 300);
                 } catch (error) {
-                  console.error("❌ Test randevu ekleme hatası:", error);
-                  console.error("🔍 Hata detayları:", {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
-                  });
+                  console.error("Test randevu ekleme hatası:", error);
                   toast({
                     title: "Hata",
                     description: "Test randevu eklenirken hata oluştu.",

@@ -23,8 +23,11 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DoctorNavbar from "@/components/DoctorNavbar";
-import { collection, getDocs, query, where, orderBy, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  getDoctorRecordForAuthUid,
+  getAppointmentsForDoctor,
+  updateAppointmentFields,
+} from "@/services/doctorService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,110 +69,40 @@ const DoctorAppointments = () => {
   const loadAppointments = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Doktor randevuları yükleniyor...");
-      console.log("👨‍⚕️ Kullanıcı ID:", user!.uid);
-      
-      // Önce doktor bilgilerini getir
-      const usersRef = collection(db, "users");
-      const doctorQuery = query(usersRef, where("userId", "==", user!.uid), where("role", "==", "doctor"));
-      const doctorSnapshot = await getDocs(doctorQuery);
-      
-      if (!doctorSnapshot.empty) {
-        const doctorDoc = doctorSnapshot.docs[0];
-        const doctorId = doctorDoc.id;
-        
-        console.log("👨‍⚕️ Doktor ID:", doctorId);
-        
-        // Doktorun randevularını getir - index hatası için fallback ile
-        const appointmentsRef = collection(db, "appointments");
-        
-        try {
-          // Önce orderBy ile deneyelim
-          const appointmentsQuery = query(
-            appointmentsRef, 
-            where("doctorId", "==", doctorId),
-            orderBy("date", "desc")
-          );
-          const appointmentsSnapshot = await getDocs(appointmentsQuery);
-          
-          const appointmentsData: Appointment[] = appointmentsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              patientId: data.patientId || "",
-              patientName: data.patientName || "Bilinmeyen Hasta",
-              doctorId: data.doctorId || "",
-              doctorName: data.doctorName || "Bilinmeyen Doktor",
-              date: data.date || "",
-              time: data.time || "",
-              type: data.type || "",
-              status: data.status || "upcoming",
-              location: data.location || "",
-              notes: data.notes || "",
-              createdAt: data.createdAt || new Date()
-            };
-          });
-          
-          setAppointments(appointmentsData);
-          console.log("📅 Randevular yüklendi (orderBy ile):", appointmentsData.length);
-          
-        } catch (indexError: any) {
-          // Index hatası varsa, orderBy olmadan deneyelim
-          if (indexError.code === 'failed-precondition' || indexError.message.includes('index')) {
-            console.log("⚠️ Index hatası, orderBy olmadan deneyelim...");
-            
-            const appointmentsQuery = query(
-              appointmentsRef, 
-              where("doctorId", "==", doctorId)
-            );
-            const appointmentsSnapshot = await getDocs(appointmentsQuery);
-            
-            const appointmentsData: Appointment[] = appointmentsSnapshot.docs.map(doc => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                patientId: data.patientId || "",
-                patientName: data.patientName || "Bilinmeyen Hasta",
-                doctorId: data.doctorId || "",
-                doctorName: data.doctorName || "Bilinmeyen Doktor",
-                date: data.date || "",
-                time: data.time || "",
-                type: data.type || "",
-                status: data.status || "upcoming",
-                location: data.location || "",
-                notes: data.notes || "",
-                createdAt: data.createdAt || new Date()
-              };
-            });
-            
-            // Client-side sorting
-            appointmentsData.sort((a, b) => b.date.localeCompare(a.date));
-            
-            setAppointments(appointmentsData);
-            console.log("📅 Randevular yüklendi (client-side sorted):", appointmentsData.length);
-          } else {
-            throw indexError;
-          }
-        }
-        
-        toast({
-          title: "Başarılı",
-          description: `${appointments.length} randevu yüklendi.`,
-        });
-      } else {
-        console.error("❌ Doktor bilgileri bulunamadı");
+      const record = await getDoctorRecordForAuthUid(user!.uid);
+      if (!record) {
         toast({
           title: "Hata",
           description: "Doktor bilgileri bulunamadı.",
           variant: "destructive",
         });
+        return;
       }
-    } catch (error: any) {
-      console.error("❌ Randevular yüklenemedi:", error);
+      const rows = await getAppointmentsForDoctor(record.id);
+      const appointmentsData: Appointment[] = rows.map((row) => ({
+        id: row.id!,
+        patientId: row.patientId || "",
+        patientName: row.patientName || "Bilinmeyen Hasta",
+        doctorId: row.doctorId || "",
+        doctorName: row.doctorName || row.doctor || "Bilinmeyen Doktor",
+        date: row.date || "",
+        time: row.time || "",
+        type: row.type || "",
+        status: row.status || "upcoming",
+        location: row.location || "",
+        notes: row.notes || "",
+        createdAt: row.createdAt || new Date(),
+      }));
+      setAppointments(appointmentsData);
+      toast({
+        title: "Başarılı",
+        description: `${appointmentsData.length} randevu yüklendi.`,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Randevular yüklenirken hata oluştu: ${error.message}`,
+        description: `Randevular yüklenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     } finally {
@@ -179,32 +112,19 @@ const DoctorAppointments = () => {
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
-      console.log("🔄 Randevu durumu güncelleniyor...");
-      console.log("📅 Randevu ID:", appointmentId);
-      console.log("🔄 Yeni durum:", newStatus);
-      
-      // Firestore'da randevu durumunu güncelle
-      await updateDoc(doc(db, "appointments", appointmentId), {
-        status: newStatus,
-        updatedAt: new Date(),
-        updatedBy: user!.uid
+      await updateAppointmentFields(appointmentId, {
+        status: newStatus as Appointment["status"],
       });
-      
-      console.log("✅ Randevu durumu güncellendi");
-      
-      // Randevu listesini yenile
       await loadAppointments();
-
       toast({
         title: "Başarılı",
         description: `Randevu durumu "${getStatusText(newStatus)}" olarak güncellendi.`,
       });
-
-    } catch (error: any) {
-      console.error("❌ Randevu durumu güncelleme hatası:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen hata";
       toast({
         title: "Hata",
-        description: `Randevu durumu güncellenirken hata oluştu: ${error.message}`,
+        description: `Randevu durumu güncellenirken hata oluştu: ${message}`,
         variant: "destructive",
       });
     }

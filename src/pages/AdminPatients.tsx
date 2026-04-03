@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +21,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminNavbar from "@/components/AdminNavbar";
-import { getRecentPatients } from "@/services/adminService";
-import { collection, getDocs, query, where, orderBy, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { saveUserProfile, type UserRole } from "@/services/userService";
+import {
+  listAllUsers,
+  demoUpdateUserDoc,
+  demoDeleteUserDoc,
+  demoCreateUser,
+} from "@/services/adminService";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +57,6 @@ interface PatientFormData {
 }
 
 const AdminPatients = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -78,66 +76,32 @@ const AdminPatients = () => {
     password: ""
   });
 
-  // Firebase'den hasta verilerini yükle
   const loadPatients = async () => {
     try {
       setLoading(true);
-      
-      console.log("Firebase'den hastalar yükleniyor...");
-      
-      // Önce tüm kullanıcıları çek
-      const usersRef = collection(db, "users");
-      const allUsersQuery = query(usersRef);
-      const allUsersSnapshot = await getDocs(allUsersQuery);
-      
-      console.log("Toplam kullanıcı sayısı:", allUsersSnapshot.docs.length);
-      
-      // Tüm kullanıcıları logla
-      allUsersSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.log("Kullanıcı:", { id: doc.id, ...data });
-      });
-      
-      // Sadece hastaları filtrele
-      const patientsData: Patient[] = allUsersSnapshot.docs
-        .filter(doc => {
-          const data = doc.data();
-          return data.role === "patient";
-        })
-        .map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            userId: data.userId || doc.id,
-            name: data.name || "İsimsiz Hasta",
-            email: data.email || "",
-            phone: data.phone || "",
-            birthDate: data.birthDate || "",
-            gender: data.gender || "",
-            bloodType: data.bloodType || "",
-            status: data.status || "active",
-            role: data.role || "patient",
-            createdAt: data.createdAt || new Date()
-          };
-        });
-      
-      console.log("Filtrelenmiş hasta sayısı:", patientsData.length);
-      console.log("Hasta verileri:", patientsData);
-      
+      const all = listAllUsers();
+      const patientsData: Patient[] = all
+        .filter((u) => u.role === "patient")
+        .map((u) => ({
+          id: u.id,
+          userId: u.userId,
+          name: u.name || "İsimsiz Hasta",
+          email: u.email || "",
+          phone: u.phone || "",
+          birthDate: u.birthDate || "",
+          gender: u.gender || "",
+          bloodType: u.bloodType || "",
+          status: u.status || "active",
+          role: "patient",
+          createdAt: u.createdAt || new Date(),
+        }));
       setPatients(patientsData);
-      
       toast({
         title: "Başarılı",
-        description: `${patientsData.length} hasta yüklendi.`,
+        description: `${patientsData.length} hasta yüklendi (demo veri).`,
       });
-      
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Hastalar yüklenirken hata:", error);
-      console.error("Hata detayları:", {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
       toast({
         title: "Hata",
         description: "Hasta verileri yüklenirken bir hata oluştu.",
@@ -160,11 +124,7 @@ const AdminPatients = () => {
     try {
       setLoading(true);
       
-      // Firestore'da hasta durumunu güncelle
-      await updateDoc(doc(db, "users", patient.id), {
-        status: newStatus,
-        updatedAt: new Date()
-      });
+      demoUpdateUserDoc(patient.id, { status: newStatus });
       
       // Hasta listesini yenile
       await loadPatients();
@@ -220,69 +180,23 @@ const AdminPatients = () => {
     setLoading(true);
 
     try {
-      // Hasta hesabını oluştur
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        patientForm.email, 
-        patientForm.password
-      );
-
-      // Hasta profilini kaydet
-      const patientProfile = {
-        userId: userCredential.user.uid,
+      demoCreateUser({
         email: patientForm.email,
-        role: "patient" as UserRole,
         name: patientForm.name,
         phone: patientForm.phone,
+        role: "patient",
         birthDate: patientForm.birthDate,
         gender: patientForm.gender,
         bloodType: patientForm.bloodType,
-        status: "active" as const,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      await saveUserProfile(patientProfile);
+      });
 
       toast({
         title: "Başarılı",
-        description: `${patientForm.name} hasta hesabı başarıyla oluşturuldu. Email: ${patientForm.email}`,
+        description: `${patientForm.name} demo hasta kaydı oluşturuldu. Email: ${patientForm.email}`,
       });
-
-      // Hasta listesini yenile
-      const loadPatients = async () => {
-        try {
-          const usersRef = collection(db, "users");
-          const patientsQuery = query(
-            usersRef,
-            where("role", "==", "patient"),
-            orderBy("createdAt", "desc")
-          );
-          
-          const snapshot = await getDocs(patientsQuery);
-          const patientsData: Patient[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            userId: doc.data().userId || doc.id,
-            name: doc.data().name || "İsimsiz Hasta",
-            email: doc.data().email || "",
-            phone: doc.data().phone || "",
-            birthDate: doc.data().birthDate || "",
-            gender: doc.data().gender || "",
-            bloodType: doc.data().bloodType || "",
-            status: doc.data().status || "active",
-            role: doc.data().role || "patient",
-            createdAt: doc.data().createdAt || new Date()
-          }));
-          
-          setPatients(patientsData);
-        } catch (error) {
-          console.error("Hastalar yenilenirken hata:", error);
-        }
-      };
 
       await loadPatients();
 
-      // Formu temizle
       setPatientForm({
         name: "",
         email: "",
@@ -290,27 +204,13 @@ const AdminPatients = () => {
         birthDate: "",
         gender: "",
         bloodType: "",
-        password: ""
+        password: "",
       });
       setShowPatientForm(false);
-
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Hasta kayıt hatası:", error);
-      
-      let errorMessage = "Hasta kaydı oluşturulurken hata oluştu.";
-      
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Bu email adresi zaten kullanımda. Lütfen farklı bir email adresi kullanın.";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Geçersiz email adresi. Lütfen doğru bir email adresi girin.";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Şifre çok zayıf. Lütfen en az 6 karakterli güçlü bir şifre seçin.";
-      } else if (error.code === "auth/network-request-failed") {
-        errorMessage = "Ağ bağlantısı sorunu. Lütfen internet bağlantınızı kontrol edin.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Hasta kaydı oluşturulurken hata oluştu.";
       toast({
         title: "Hata",
         description: errorMessage,
@@ -378,25 +278,16 @@ const AdminPatients = () => {
     try {
       setLoading(true);
       
-      console.log("🔄 Hasta güncelleniyor:", selectedPatient.id);
-      console.log("📝 Güncellenecek veriler:", patientForm);
-      
-      // Firestore'da hasta bilgilerini güncelle
-      const patientRef = doc(db, "users", selectedPatient.id);
-      await updateDoc(patientRef, {
+      const savedName = patientForm.name;
+      demoUpdateUserDoc(selectedPatient.id, {
         name: patientForm.name,
         email: patientForm.email,
         phone: patientForm.phone,
         birthDate: patientForm.birthDate,
         gender: patientForm.gender,
         bloodType: patientForm.bloodType,
-        updatedAt: new Date(),
-        updatedBy: user?.email || "admin"
       });
-      
-      console.log("✅ Hasta başarıyla güncellendi");
-      
-      // Formu sıfırla
+
       setPatientForm({
         name: "",
         email: "",
@@ -404,19 +295,17 @@ const AdminPatients = () => {
         birthDate: "",
         gender: "",
         bloodType: "",
-        password: ""
+        password: "",
       });
-      
-      // Modalı kapat
+
       setShowPatientEdit(false);
       setSelectedPatient(null);
-      
-      // Hasta listesini yenile
+
       await loadPatients();
-      
+
       toast({
         title: "Başarılı",
-        description: `${patientForm.name} hasta bilgileri başarıyla güncellendi.`,
+        description: `${savedName} hasta bilgileri güncellendi (demo).`,
       });
       
     } catch (error) {
@@ -440,40 +329,7 @@ const AdminPatients = () => {
     try {
       setLoading(true);
       
-      // Firestore'dan hasta kaydını sil
-      await deleteDoc(doc(db, "users", patientId));
-      
-      // Hasta listesini yenile
-      const loadPatients = async () => {
-        try {
-          const usersRef = collection(db, "users");
-          const patientsQuery = query(
-            usersRef,
-            where("role", "==", "patient"),
-            orderBy("createdAt", "desc")
-          );
-          
-          const snapshot = await getDocs(patientsQuery);
-          const patientsData: Patient[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            userId: doc.data().userId || doc.id,
-            name: doc.data().name || "İsimsiz Hasta",
-            email: doc.data().email || "",
-            phone: doc.data().phone || "",
-            birthDate: doc.data().birthDate || "",
-            gender: doc.data().gender || "",
-            bloodType: doc.data().bloodType || "",
-            status: doc.data().status || "active",
-            role: doc.data().role || "patient",
-            createdAt: doc.data().createdAt || new Date()
-          }));
-          
-          setPatients(patientsData);
-        } catch (error) {
-          console.error("Hastalar yenilenirken hata:", error);
-        }
-      };
-
+      demoDeleteUserDoc(patientId);
       await loadPatients();
 
       toast({
@@ -556,122 +412,32 @@ const AdminPatients = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Yenile
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                // Tüm kullanıcıları kontrol et
-                try {
-                  console.log("Tüm kullanıcılar kontrol ediliyor...");
-                  const usersRef = collection(db, "users");
-                  const snapshot = await getDocs(usersRef);
-                  console.log("Toplam kullanıcı sayısı:", snapshot.docs.length);
-                  
-                  snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-                    console.log("Kullanıcı:", { id: doc.id, ...data });
-                  });
-                  
-                  toast({
-                    title: "Bilgi",
-                    description: `${snapshot.docs.length} kullanıcı bulundu.`,
-                  });
-                } catch (error) {
-                  console.error("Kullanıcı kontrol hatası:", error);
-                  toast({
-                    title: "Hata",
-                    description: "Kullanıcılar kontrol edilirken hata oluştu.",
-                    variant: "destructive",
-                  });
-                }
+            <Button
+              variant="outline"
+              onClick={() => {
+                const n = listAllUsers().length;
+                toast({
+                  title: "Bilgi",
+                  description: `Demo kullanıcı sayısı: ${n}`,
+                });
               }}
             >
-              Tüm Kullanıcıları Kontrol Et
+              Kullanıcı Sayısı
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={async () => {
-                // Firebase bağlantısını test et
-                try {
-                  console.log("Firebase bağlantısı test ediliyor...");
-                  console.log("DB objesi:", db);
-                  console.log("Auth objesi:", auth);
-                  
-                  // Basit bir test dokümanı ekle
-                  const testDoc = {
-                    test: true,
-                    timestamp: new Date(),
-                    message: "Firebase bağlantı testi"
-                  };
-                  
-                  const docRef = await addDoc(collection(db, "test"), testDoc);
-                  console.log("Test dokümanı eklendi:", docRef.id);
-                  
-                  // Hemen sil
-                  await deleteDoc(doc(db, "test", docRef.id));
-                  console.log("Test dokümanı silindi");
-                  
-                  toast({
-                    title: "Başarılı",
-                    description: "Firebase bağlantısı çalışıyor!",
-                  });
-                } catch (error) {
-                  console.error("Firebase test hatası:", error);
-                  toast({
-                    title: "Hata",
-                    description: "Firebase bağlantısında sorun var.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              Firebase Test
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                // Test hasta ekle
-                try {
-                  console.log("Test hasta ekleniyor...");
-                  const testPatient = {
-                    name: "Test Hasta " + new Date().getTime(),
-                    email: "test" + new Date().getTime() + "@example.com",
-                    phone: "555-" + Math.floor(Math.random() * 10000),
-                    birthDate: "1990-01-01",
-                    gender: "Erkek",
-                    bloodType: "A+",
-                    role: "patient",
-                    status: "active",
-                    createdAt: new Date(),
-                    userId: "test-" + new Date().getTime()
-                  };
-                  
-                  console.log("Test hasta verisi:", testPatient);
-                  const docRef = await addDoc(collection(db, "users"), testPatient);
-                  console.log("Test hasta eklendi, doc ID:", docRef.id);
-                  
-                  toast({
-                    title: "Başarılı",
-                    description: "Test hasta eklendi.",
-                  });
-                  
-                  // Hemen yenile
-                  setTimeout(() => {
-                    loadPatients();
-                  }, 1000);
-                  
-                } catch (error) {
-                  console.error("Test hasta ekleme hatası:", error);
-                  console.error("Hata detayları:", {
-                    message: error.message,
-                    code: error.code,
-                    stack: error.stack
-                  });
-                  toast({
-                    title: "Hata",
-                    description: "Test hasta eklenirken hata oluştu.",
-                    variant: "destructive",
-                  });
-                }
+                demoCreateUser({
+                  name: "Test Hasta " + Date.now(),
+                  email: `test${Date.now()}@demo.local`,
+                  phone: "555-0000",
+                  role: "patient",
+                  birthDate: "1990-01-01",
+                  gender: "Erkek",
+                  bloodType: "A+",
+                });
+                toast({ title: "Başarılı", description: "Test hasta demo listesine eklendi." });
+                await loadPatients();
               }}
             >
               Test Hasta Ekle
@@ -1306,7 +1072,7 @@ Kayıt Tarihi: ${selectedPatient.createdAt ? (selectedPatient.createdAt?.toDate?
                     Hastalar Yükleniyor...
                   </h3>
                   <p className="text-gray-500">
-                    Firebase'den hasta verileri çekiliyor
+                    Demo hasta verileri yükleniyor
                   </p>
                 </div>
               ) : filteredPatients.length === 0 ? (
@@ -1323,28 +1089,23 @@ Kayıt Tarihi: ${selectedPatient.createdAt ? (selectedPatient.createdAt?.toDate?
                   </p>
                   {!searchTerm && filterStatus === "all" && (
                     <div className="mt-4">
-                      <Button 
+                      <Button
                         onClick={async () => {
                           try {
-                            const testPatient = {
+                            demoCreateUser({
                               name: "Örnek Hasta",
-                              email: "ornek@example.com",
+                              email: `ornek${Date.now()}@demo.local`,
                               phone: "555-0000",
                               birthDate: "1990-01-01",
                               gender: "Kadın",
                               bloodType: "B+",
                               role: "patient",
-                              status: "active",
-                              createdAt: new Date(),
-                              userId: "ornek-" + new Date().getTime()
-                            };
-                            
-                            await addDoc(collection(db, "users"), testPatient);
+                            });
                             toast({
                               title: "Başarılı",
                               description: "Örnek hasta eklendi.",
                             });
-                            loadPatients();
+                            await loadPatients();
                           } catch (error) {
                             console.error("Örnek hasta ekleme hatası:", error);
                             toast({
