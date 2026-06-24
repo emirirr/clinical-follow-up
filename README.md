@@ -1,98 +1,70 @@
-# Klinik Takip
+<div align="center">
 
-## Proje Bilgisi
+# 🏥 Klinik Takip
 
-**Klinik Takip Sistemi** - Hasta ve Doktor Yönetim Platformu
+**Hasta, doktor ve klinik yönetimini tek platformda toplayan modern sağlık takip sistemi**
 
-**URL**: https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4
+![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Tailwind](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 
-## How can I edit this code?
+</div>
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## 📋 Hakkında
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4) and start prompting.
+Klinik Takip; kliniklerin günlük operasyonlarını dijitalleştiren, **rol tabanlı** bir hasta ve doktor yönetim platformudur. Yönetici, doktor ve hasta üç farklı panel üzerinden randevu, reçete, test sonucu ve hasta takibini uçtan uca yönetir.
 
-Changes made via Lovable will be committed automatically to this repo.
+## ✨ Özellikler
 
-**Use your preferred IDE**
+### 🛡️ Yönetici Paneli
+- Doktor, hasta ve randevu yönetimi
+- Klinik geneli raporlar ve istatistikler
+- Sistem ayarları ve kullanıcı yetkilendirme
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🩺 Doktor Paneli
+- Randevu takvimi ve hasta listesi
+- Reçete oluşturma ve geçmiş kayıtları
+- Hasta dosyası ve profil yönetimi
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 👤 Hasta Paneli
+- Randevu görüntüleme ve takip
+- Reçete ve test sonuçlarına erişim
+- Bildirimler ve profil yönetimi
 
-Follow these steps:
+## 🛠️ Teknoloji Yığını
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+| Katman | Teknolojiler |
+|--------|--------------|
+| Arayüz | React 18, TypeScript, Tailwind CSS, shadcn/ui |
+| Build | Vite |
+| Veri & Kimlik | Firebase (Auth, Firestore) |
+| Yönlendirme | React Router |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## Kullanılan Teknolojiler
-
-Bu proje şu teknolojilerle geliştirilmiştir:
-
-- **Vite** - Hızlı geliştirme ortamı
-- **TypeScript** - Tip güvenli JavaScript
-- **React** - Kullanıcı arayüzü kütüphanesi
-- **shadcn-ui** - Modern UI bileşenleri
-- **Tailwind CSS** - Utility-first CSS framework
-- **Firebase** - Backend servisleri (Auth, Firestore, Storage)
-
-## Projeyi Nasıl Çalıştırırım?
-
-### Geliştirme Sunucusu
+## 🚀 Kurulum
 
 ```bash
-# Bağımlılıkları yükle
+# Bağımlılıkları yükleyin
 npm install
 
-# Geliştirme sunucusunu başlat
+# Firebase yapılandırmasını ekleyin
+cp .env.example .env   # .env içindeki Firebase değerlerini doldurun
+
+# Geliştirme sunucusunu başlatın
 npm run dev
-```
 
-### Production Build
-
-```bash
-# Production build oluştur
+# Production build
 npm run build
-
-# Preview sunucusunu başlat
-npm run preview
 ```
 
-## Deployment
+## 👤 Geliştirici
 
-Lovable platformunda projeyi yayınlamak için [Lovable](https://lovable.dev/projects/b50c98d1-eee2-46cc-ac8f-82269da920f4) adresine gidin ve Share -> Publish'e tıklayın.
+**Emir Tiryaki** — Full Stack Developer
+🌐 [emirtiryaki.com](https://emirtiryaki.com) · 📧 info@emirtiryaki.com
 
-## Can I connect a custom domain to my Lovable project?
+## 📄 Lisans
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Tüm hakları saklıdır © Emir Tiryaki
