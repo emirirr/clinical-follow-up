@@ -18,6 +18,16 @@
 
 Klinik Takip; kliniklerin günlük operasyonlarını dijitalleştiren, **rol tabanlı** bir hasta ve doktor yönetim platformudur. Yönetici, doktor ve hasta üç farklı panel üzerinden randevu, reçete, test sonucu ve hasta takibini uçtan uca yönetir.
 
+## 📸 Ekran Görüntüleri
+
+**Ana Sayfa**
+
+![Ana Sayfa](docs/screenshots/landing.png)
+
+| 🛡️ Yönetici Paneli | 🩺 Doktor Paneli | 👤 Hasta Paneli |
+|:---:|:---:|:---:|
+| ![Yönetici](docs/screenshots/dashboard-admin.png) | ![Doktor](docs/screenshots/dashboard-doctor.png) | ![Hasta](docs/screenshots/dashboard-patient.png) |
+
 ## ✨ Özellikler
 
 ### 🛡️ Yönetici Paneli
@@ -41,7 +51,7 @@ Klinik Takip; kliniklerin günlük operasyonlarını dijitalleştiren, **rol tab
 |--------|--------------|
 | Arayüz | React 18, TypeScript, Tailwind CSS, shadcn/ui |
 | Build | Vite |
-| Veri & Kimlik | Firebase (Auth, Firestore) |
+| Veri & Kimlik | Firebase (Firestore) · Demo oturum katmanı |
 | Yönlendirme | React Router |
 
 ## 🚀 Kurulum
@@ -50,15 +60,23 @@ Klinik Takip; kliniklerin günlük operasyonlarını dijitalleştiren, **rol tab
 # Bağımlılıkları yükleyin
 npm install
 
-# Firebase yapılandırmasını ekleyin
-cp .env.example .env   # .env içindeki Firebase değerlerini doldurun
-
-# Geliştirme sunucusunu başlatın
+# Geliştirme sunucusunu başlatın (sıfır yapılandırma — demo verisiyle hazır gelir)
 npm run dev
 
 # Production build
 npm run build
 ```
+
+### 🔑 Demo Erişim
+
+Uygulama **demo modunda** örnek verilerle çalışır — kayıt gerekmez, **şifre herhangi bir değer olabilir**.
+Rolleri denemek için giriş ekranında şu e-postaları kullanın:
+
+| Rol | E-posta |
+|-----|---------|
+| Yönetici | `admin@demo.local` |
+| Doktor | `doktor@demo.local` |
+| Hasta | `hasta@demo.local` |
 
 ## 👤 Geliştirici
 
